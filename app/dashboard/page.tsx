@@ -144,8 +144,65 @@ export default async function DashboardPage() {
     return mm === todayMonth && dd === todayDay;
   });
 
+  // Daily situation summary (Greek). Greeting by Athens hour; zero segments are
+  // dropped so the line stays calm and relevant.
+  const athensHourParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Athens",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  let athensHour = Number(
+    athensHourParts.find((p) => p.type === "hour")?.value
+  );
+  if (athensHour === 24) athensHour = 0;
+  const greeting =
+    athensHour < 12
+      ? "Καλημέρα"
+      : athensHour < 20
+      ? "Καλησπέρα"
+      : "Καληνύχτα";
+
+  const situation = [
+    { n: today.length, href: "#today", label: `${today.length} check-ins` },
+    {
+      n: todaysBirthdays.length,
+      href: "#birthdays",
+      label: `${todaysBirthdays.length} γενέθλια`,
+    },
+    {
+      n: urgentRenewals.length,
+      href: "#renewals",
+      label: `${urgentRenewals.length} επείγουσες ανανεώσεις`,
+    },
+    {
+      n: inactiveMembers.length,
+      href: "#inactive",
+      label: `${inactiveMembers.length} χαμένα μέλη`,
+    },
+  ].filter((s) => s.n > 0);
+
   return (
     <div className="flex flex-col gap-4">
+      {/* DAILY SITUATION HEADER ----------------------------------------- */}
+      <section className="card bg-gradient-to-br from-brand/10 to-transparent border-brand/30 text-sm">
+        <span className="font-medium text-neutral-200">{greeting}!</span>{" "}
+        {situation.length > 0 ? (
+          <>
+            <span className="text-neutral-400">Σήμερα: </span>
+            {situation.map((s, i) => (
+              <span key={s.href}>
+                {i > 0 && <span className="text-neutral-600"> · </span>}
+                <a href={s.href} className="text-brand hover:underline">
+                  {s.label}
+                </a>
+              </span>
+            ))}
+          </>
+        ) : (
+          <span className="text-neutral-400">Όλα ήσυχα σήμερα 👌</span>
+        )}
+      </section>
+
       {/* BIRTHDAYS ------------------------------------------------------ */}
       {todaysBirthdays.length > 0 && (
         <section
@@ -183,7 +240,7 @@ export default async function DashboardPage() {
       </section>
 
       {/* TODAY'S CHECK-INS FEED ----------------------------------------- */}
-      <section className="card flex flex-col gap-2">
+      <section id="today" className="card flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold">Today&apos;s check-ins</h2>
           <span className="text-xs text-neutral-500">{today.length}</span>
