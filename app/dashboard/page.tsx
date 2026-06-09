@@ -61,6 +61,7 @@ export default async function DashboardPage() {
   const today = todayRaw ?? [];
 
   const now = Date.now();
+  const in3Days = now + 3 * 86_400_000;
   const in7Days = now + 7 * 86_400_000;
 
   const activeCount = list.filter(
@@ -81,6 +82,14 @@ export default async function DashboardPage() {
         new Date(a.subscription_expires_at!).getTime() -
         new Date(b.subscription_expires_at!).getTime()
     );
+
+  // Split: act-now (next 3 days) vs heads-up (days 4-7).
+  const urgentRenewals = nearExpiry.filter(
+    (m) => new Date(m.subscription_expires_at!).getTime() <= in3Days
+  );
+  const weekRenewals = nearExpiry.filter(
+    (m) => new Date(m.subscription_expires_at!).getTime() > in3Days
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -131,38 +140,44 @@ export default async function DashboardPage() {
 
       {/* RENEWALS DUE --------------------------------------------------- */}
       {nearExpiry.length > 0 && (
-        <section className="card flex flex-col gap-2 border-amber-800/60">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-amber-300">
-              💰 Renewals due (next 7 days)
-            </h2>
-            <span className="text-xs text-neutral-500">{nearExpiry.length}</span>
-          </div>
-          <ul className="divide-y divide-neutral-800">
-            {nearExpiry.map((m) => (
-              <li
-                key={m.member_id}
-                className="flex items-center justify-between py-2 gap-2"
-              >
-                <Link
-                  href={`/dashboard/member/${m.member_id}`}
-                  className="font-medium truncate hover:text-brand min-w-0"
-                >
-                  {m.name}
-                </Link>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="badge-warn">
-                    {fmtDate(m.subscription_expires_at)}
-                  </span>
-                  <WhatsAppReminderButton
-                    name={m.name}
-                    phone={m.phone}
-                    expiresAt={m.subscription_expires_at!}
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
+        <section id="renewals" className="card flex flex-col gap-3">
+          <h2 className="font-semibold">💰 Renewals due</h2>
+
+          {urgentRenewals.length > 0 && (
+            <div className="rounded-lg border-2 border-rose-700/70 bg-rose-950/30 p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-rose-300">
+                  🚨 Today&apos;s priority (≤3 days)
+                </h3>
+                <span className="text-xs text-neutral-500">
+                  {urgentRenewals.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-neutral-800">
+                {urgentRenewals.map((m) => (
+                  <RenewalRow key={m.member_id} m={m} tone="bad" />
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {weekRenewals.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-amber-300">
+                  Coming up this week
+                </h3>
+                <span className="text-xs text-neutral-500">
+                  {weekRenewals.length}
+                </span>
+              </div>
+              <ul className="divide-y divide-neutral-800">
+                {weekRenewals.map((m) => (
+                  <RenewalRow key={m.member_id} m={m} tone="warn" />
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
@@ -204,6 +219,35 @@ export default async function DashboardPage() {
         })}
       </ul>
     </div>
+  );
+}
+
+function RenewalRow({
+  m,
+  tone,
+}: {
+  m: MemberStat;
+  tone: "bad" | "warn";
+}) {
+  return (
+    <li className="flex items-center justify-between py-2 gap-2">
+      <Link
+        href={`/dashboard/member/${m.member_id}`}
+        className="font-medium truncate hover:text-brand min-w-0"
+      >
+        {m.name}
+      </Link>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className={`badge-${tone}`}>
+          {fmtDate(m.subscription_expires_at)}
+        </span>
+        <WhatsAppReminderButton
+          name={m.name}
+          phone={m.phone}
+          expiresAt={m.subscription_expires_at!}
+        />
+      </div>
+    </li>
   );
 }
 
