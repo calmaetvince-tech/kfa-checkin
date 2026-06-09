@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
+import { rateLimit } from "@/lib/ratelimit";
 import { Logo } from "@/components/Logo";
+import { Heatmap } from "@/components/Heatmap";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { MemberTokenSaver } from "@/components/MemberTokenSaver";
 import { ForgetDeviceButton } from "@/components/ForgetDeviceButton";
@@ -19,30 +22,21 @@ export async function generateMetadata({
   const { data } = await supabase.rpc("get_member_by_token", {
     p_token: params.token,
   });
-  const member = (data as { name: string }[] | null)?.[0];
+  const member = (data as { name: string; gym_name: string | null }[] | null)?.[0];
   const name = member?.name ?? "Member";
-  const title = `${name} — KFA Check-in`;
-  const description = `${name}'s personal check-in QR for Kallistis Fight Academy`;
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const ogImageUrl = `${appUrl}/brand/og-image.png`;
+  const gymName = member?.gym_name ?? "Kallistis Fight Academy";
+  const title = `${name} — ${gymName} Check-in`;
+  const description = `${name}'s personal check-in QR for ${gymName}`;
   return {
     title,
     description,
     // Override the global manifest with a per-member one whose start_url is
     // this member's QR page — so the home-screen icon opens directly here.
     manifest: `/m/${params.token}/manifest.webmanifest`,
-    openGraph: {
-      title,
-      description,
-      images: [{ url: ogImageUrl, width: 1200, height: 630 }],
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-      images: [ogImageUrl],
-    },
+    // NOTE: the OG/Twitter image is provided dynamically by the sibling
+    // opengraph-image.tsx (shows the member's name + current streak).
+    openGraph: { title, description },
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
@@ -55,15 +49,40 @@ type MemberRow = {
   created_at: string;
   visits_this_month: number;
   visits_all_time: number;
+  gym_id: string | null;
+  gym_name: string | null;
 };
 
 type VisitRow = { id: string; checked_in_at: string };
+
+type StreakRow = {
+  current_streak_days: number;
+  longest_streak_days: number;
+};
 
 export default async function MemberSelfPage({
   params,
 }: {
   params: { token: string };
 }) {
+  // Throttle the public page per IP (no-op unless Upstash is configured).
+  const hdrs = headers();
+  const ip =
+    hdrs.get("x-forwarded-for")?.split(",")[0].trim() ||
+    hdrs.get("x-real-ip") ||
+    "anon";
+  const { success: allowed } = await rateLimit(`m:${ip}`);
+  if (!allowed) {
+    return (
+      <main className="flex flex-col items-center justify-center min-h-[70vh] gap-3 text-center">
+        <h1 className="text-xl font-bold">Slow down a sec</h1>
+        <p className="text-sm text-neutral-400 max-w-sm">
+          Too many requests from your network. Wait a minute and refresh.
+        </p>
+      </main>
+    );
+  }
+
   const supabase = createSupabaseServerClient();
 
   const { data: memberRows } = await supabase.rpc("get_member_by_token", {
@@ -77,6 +96,21 @@ export default async function MemberSelfPage({
     p_limit: 20,
   });
   const recentVisits = (visitsData as VisitRow[] | null) ?? [];
+
+  const { data: streakData } = await supabase.rpc("get_member_streak", {
+    p_member_id: member.id,
+  });
+  const streak = (streakData as StreakRow[] | null)?.[0] ?? {
+    current_streak_days: 0,
+    longest_streak_days: 0,
+  };
+
+  const { data: activeDaysData } = await supabase.rpc(
+    "get_member_active_days",
+    { p_token: params.token, p_days: 30 }
+  );
+  const activeDays = ((activeDaysData as { active_day: string }[] | null) ?? [])
+    .map((r) => r.active_day);
 
   const s = statusLabel(member.subscription_expires_at);
   const appUrl =
@@ -110,6 +144,21 @@ export default async function MemberSelfPage({
         </p>
       </section>
 
+      {streak.current_streak_days > 0 && (
+        <section className="card flex items-center justify-center gap-3 bg-gradient-to-br from-brand/15 to-transparent border-brand/30">
+          <span className="text-3xl">🔥</span>
+          <div>
+            <p className="text-2xl font-bold text-brand leading-none">
+              {streak.current_streak_days} day
+              {streak.current_streak_days === 1 ? "" : "s"}
+            </p>
+            <p className="text-xs text-neutral-400">
+              current streak · best {streak.longest_streak_days}
+            </p>
+          </div>
+        </section>
+      )}
+
       <section className="grid grid-cols-2 gap-2">
         <div className="card text-center">
           <p className="text-3xl font-bold text-brand">
@@ -122,6 +171,8 @@ export default async function MemberSelfPage({
           <p className="text-xs text-neutral-500">All-time</p>
         </div>
       </section>
+
+      <Heatmap activeDays={activeDays} />
 
       <section className="card flex flex-col gap-2 text-sm">
         <h2 className="font-semibold">Subscription</h2>
@@ -158,7 +209,7 @@ export default async function MemberSelfPage({
       <ForgetDeviceButton />
 
       <footer className="text-center text-xs text-neutral-600 pt-2">
-        Kallistis Fight Academy
+        {member.gym_name ?? "Kallistis Fight Academy"}
       </footer>
     </main>
   );

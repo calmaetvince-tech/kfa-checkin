@@ -14,14 +14,38 @@ type MemberStat = {
   last_visit_at: string | null;
 };
 
+type TodayCheckIn = {
+  id: string;
+  checked_in_at: string;
+  member_id: string;
+  members: { name: string } | { name: string }[] | null;
+};
+
+function memberName(m: TodayCheckIn["members"]): string {
+  if (!m) return "Member";
+  return Array.isArray(m) ? m[0]?.name ?? "Member" : m.name;
+}
+
 export default async function DashboardPage() {
   const { supabase } = await requireOwner();
 
-  const { data: members, error } = await supabase
-    .from("member_month_stats")
-    .select("*")
-    .order("name", { ascending: true })
-    .returns<MemberStat[]>();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [{ data: members, error }, { data: todayRaw }] = await Promise.all([
+    supabase
+      .from("member_month_stats")
+      .select("*")
+      .order("name", { ascending: true })
+      .returns<MemberStat[]>(),
+    supabase
+      .from("check_ins")
+      .select("id, checked_in_at, member_id, members(name)")
+      .gte("checked_in_at", startOfToday.toISOString())
+      .order("checked_in_at", { ascending: false })
+      .limit(100)
+      .returns<TodayCheckIn[]>(),
+  ]);
 
   if (error) {
     return (
@@ -32,25 +56,105 @@ export default async function DashboardPage() {
   }
 
   const list = members ?? [];
+  const today = todayRaw ?? [];
+
+  const now = Date.now();
+  const in7Days = now + 7 * 86_400_000;
+
   const activeCount = list.filter(
     (m) =>
       m.subscription_expires_at &&
-      new Date(m.subscription_expires_at).getTime() > Date.now()
+      new Date(m.subscription_expires_at).getTime() > now
   ).length;
-  const checkedInToday = list.filter(
-    (m) =>
-      m.last_visit_at &&
-      new Date(m.last_visit_at).toDateString() === new Date().toDateString()
-  ).length;
+
+  // The owner's money list: subs expiring within 7 days, soonest first.
+  const nearExpiry = list
+    .filter((m) => {
+      if (!m.subscription_expires_at) return false;
+      const t = new Date(m.subscription_expires_at).getTime();
+      return t > now && t <= in7Days;
+    })
+    .sort(
+      (a, b) =>
+        new Date(a.subscription_expires_at!).getTime() -
+        new Date(b.subscription_expires_at!).getTime()
+    );
 
   return (
     <div className="flex flex-col gap-4">
       <section className="grid grid-cols-3 gap-2">
         <Stat label="Members" value={list.length} />
         <Stat label="Active subs" value={activeCount} tone="ok" />
-        <Stat label="Today" value={checkedInToday} tone="brand" />
+        <Stat label="Today" value={today.length} tone="brand" />
       </section>
 
+      {/* TODAY'S CHECK-INS FEED ----------------------------------------- */}
+      <section className="card flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">Today&apos;s check-ins</h2>
+          <span className="text-xs text-neutral-500">{today.length}</span>
+        </div>
+        {today.length === 0 ? (
+          <p className="text-sm text-neutral-500">
+            Nobody in yet today. Open the{" "}
+            <Link href="/dashboard/scan" className="text-brand underline">
+              scan page
+            </Link>{" "}
+            for the next class.
+          </p>
+        ) : (
+          <ul className="divide-y divide-neutral-800">
+            {today.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center justify-between py-2 gap-3"
+              >
+                <Link
+                  href={`/dashboard/member/${c.member_id}`}
+                  className="font-medium truncate hover:text-brand"
+                >
+                  {memberName(c.members)}
+                </Link>
+                <span className="text-xs text-neutral-500 shrink-0">
+                  {new Date(c.checked_in_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* RENEWALS DUE --------------------------------------------------- */}
+      {nearExpiry.length > 0 && (
+        <section className="card flex flex-col gap-2 border-amber-800/60">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold text-amber-300">
+              💰 Renewals due (next 7 days)
+            </h2>
+            <span className="text-xs text-neutral-500">{nearExpiry.length}</span>
+          </div>
+          <ul className="divide-y divide-neutral-800">
+            {nearExpiry.map((m) => (
+              <li key={m.member_id}>
+                <Link
+                  href={`/dashboard/member/${m.member_id}`}
+                  className="flex items-center justify-between py-2 gap-3 hover:text-brand"
+                >
+                  <span className="font-medium truncate">{m.name}</span>
+                  <span className="badge-warn shrink-0">
+                    {fmtDate(m.subscription_expires_at)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ALL MEMBERS ---------------------------------------------------- */}
       <h2 className="text-lg font-semibold">Members</h2>
 
       {list.length === 0 && (
