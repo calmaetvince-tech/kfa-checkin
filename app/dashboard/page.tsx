@@ -91,6 +91,30 @@ export default async function DashboardPage() {
     (m) => new Date(m.subscription_expires_at!).getTime() > in3Days
   );
 
+  // Active members we haven't seen in 14+ days (or ever). Longest absence first.
+  const fourteenDaysAgo = now - 14 * 86_400_000;
+  const inactiveMembers = list
+    .filter((m) => {
+      const active =
+        m.subscription_expires_at &&
+        new Date(m.subscription_expires_at).getTime() > now;
+      if (!active) return false;
+      if (!m.last_visit_at) return true;
+      return new Date(m.last_visit_at).getTime() < fourteenDaysAgo;
+    })
+    .map((m) => ({
+      ...m,
+      daysSince: m.last_visit_at
+        ? Math.floor((now - new Date(m.last_visit_at).getTime()) / 86_400_000)
+        : null,
+    }))
+    .sort((a, b) => {
+      const av = a.daysSince === null ? Infinity : a.daysSince;
+      const bv = b.daysSince === null ? Infinity : b.daysSince;
+      return bv - av;
+    });
+  const INACTIVE_CAP = 10;
+
   return (
     <div className="flex flex-col gap-4">
       <section className="grid grid-cols-3 gap-2">
@@ -181,8 +205,54 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {/* INACTIVE MEMBERS ----------------------------------------------- */}
+      {inactiveMembers.length > 0 && (
+        <section id="inactive" className="card flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">🕊️ Haven&apos;t seen in a while</h2>
+            <span className="text-xs text-neutral-500">
+              {inactiveMembers.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-neutral-800">
+            {inactiveMembers.slice(0, INACTIVE_CAP).map((m) => (
+              <li
+                key={m.member_id}
+                className="flex items-center justify-between py-2 gap-2"
+              >
+                <Link
+                  href={`/dashboard/member/${m.member_id}`}
+                  className="font-medium truncate hover:text-brand min-w-0"
+                >
+                  {m.name}
+                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-neutral-500">
+                    {m.daysSince === null
+                      ? "never"
+                      : `${m.daysSince}d ago`}
+                  </span>
+                  <WhatsAppReminderButton
+                    name={m.name}
+                    phone={m.phone}
+                    variant="inactive"
+                  />
+                </div>
+              </li>
+            ))}
+          </ul>
+          {inactiveMembers.length > INACTIVE_CAP && (
+            <Link href="#members" className="text-xs text-brand underline self-start">
+              View all {inactiveMembers.length} →
+            </Link>
+          )}
+        </section>
+      )}
+
       {/* ALL MEMBERS ---------------------------------------------------- */}
-      <h2 className="text-lg font-semibold">Members</h2>
+      <h2 id="members" className="text-lg font-semibold">
+        Members
+      </h2>
 
       {list.length === 0 && (
         <div className="card text-sm text-neutral-500">

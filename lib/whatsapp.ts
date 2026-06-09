@@ -1,4 +1,6 @@
-// Helpers for one-tap WhatsApp renewal reminders.
+// Helpers for one-tap WhatsApp owner→member messages.
+
+export type Lang = "el" | "en";
 
 // Normalize to international format. Greek defaults:
 //   strip spaces / dashes / parentheses;
@@ -44,5 +46,22 @@ export function waReminderHref(
   expiresAt: string
 ): string {
   const text = encodeURIComponent(renewalMessage(name, expiresAt));
+  return `https://wa.me/${waDigits(phone)}?text=${text}`;
+}
+
+// --- "we miss you" nudge for inactive members --------------------------------
+export function inactiveMessage(name: string, lang: Lang): string {
+  const fn = firstName(name);
+  return lang === "el"
+    ? `Γεια σου ${fn}! Σε χάσαμε στο γυμναστήριο 🥊 Όλα καλά? Σε περιμένουμε!`
+    : `Hey ${fn}! Missed you at the gym 🥊 All good? We're waiting for you!`;
+}
+
+export function waInactiveHref(
+  name: string,
+  phone: string,
+  lang: Lang
+): string {
+  const text = encodeURIComponent(inactiveMessage(name, lang));
   return `https://wa.me/${waDigits(phone)}?text=${text}`;
 }
