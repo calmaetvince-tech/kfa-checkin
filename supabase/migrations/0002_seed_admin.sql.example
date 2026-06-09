@@ -1,0 +1,9 @@
+-- After creating the owner account via Supabase Auth (email/password),
+-- run this once with the owner's user id to grant admin access.
+--
+-- Find the id: select id, email from auth.users where email = 'owner@gym.com';
+-- Then:
+--
+-- insert into public.admins (user_id)
+-- values ('00000000-0000-0000-0000-000000000000')
+-- on conflict do nothing;
