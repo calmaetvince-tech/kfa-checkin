@@ -5,6 +5,7 @@ import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
 import { renewSubscription } from "./actions";
 import { ShareButtons } from "./ShareButtons";
 import { DangerActions } from "./DangerActions";
+import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,13 @@ export default async function MemberDetailPage({
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const memberUrl = `${appUrl}/m/${member.qr_token}`;
   const justCreated = searchParams.just_created === "1";
+
+  // Show the renewal reminder when the sub is expired or expiring within 7 days.
+  const expiresMs = member.subscription_expires_at
+    ? new Date(member.subscription_expires_at).getTime()
+    : null;
+  const showRenewalReminder =
+    expiresMs !== null && expiresMs <= Date.now() + 7 * 86_400_000;
 
   return (
     <div className="flex flex-col gap-4">
@@ -112,6 +120,15 @@ export default async function MemberDetailPage({
             <p>{fmtDate(member.subscription_expires_at)}</p>
           </div>
         </div>
+        {showRenewalReminder && (
+          <div className="flex items-center gap-2">
+            <WhatsAppReminderButton
+              name={member.name}
+              phone={member.phone}
+              expiresAt={member.subscription_expires_at!}
+            />
+          </div>
+        )}
         <form action={renewSubscription} className="flex gap-2 items-end">
           <input type="hidden" name="id" value={member.id} />
           <div className="flex-1">

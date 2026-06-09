@@ -1,12 +1,14 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
 import { statusLabel, fmtDate } from "@/lib/format";
+import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 
 export const dynamic = "force-dynamic";
 
 type MemberStat = {
   member_id: string;
   name: string;
+  phone: string | null;
   plan: string | null;
   subscription_renewed_at: string | null;
   subscription_expires_at: string | null;
@@ -138,16 +140,26 @@ export default async function DashboardPage() {
           </div>
           <ul className="divide-y divide-neutral-800">
             {nearExpiry.map((m) => (
-              <li key={m.member_id}>
+              <li
+                key={m.member_id}
+                className="flex items-center justify-between py-2 gap-2"
+              >
                 <Link
                   href={`/dashboard/member/${m.member_id}`}
-                  className="flex items-center justify-between py-2 gap-3 hover:text-brand"
+                  className="font-medium truncate hover:text-brand min-w-0"
                 >
-                  <span className="font-medium truncate">{m.name}</span>
-                  <span className="badge-warn shrink-0">
+                  {m.name}
+                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="badge-warn">
                     {fmtDate(m.subscription_expires_at)}
                   </span>
-                </Link>
+                  <WhatsAppReminderButton
+                    name={m.name}
+                    phone={m.phone}
+                    expiresAt={m.subscription_expires_at!}
+                  />
+                </div>
               </li>
             ))}
           </ul>
