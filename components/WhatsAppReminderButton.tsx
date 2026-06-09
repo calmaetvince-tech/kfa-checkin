@@ -1,16 +1,23 @@
-import { waReminderHref, waInactiveHref, type Lang } from "@/lib/whatsapp";
+import {
+  waReminderHref,
+  waInactiveHref,
+  waBirthdayHref,
+  type Lang,
+} from "@/lib/whatsapp";
 
-type Variant = "renewal" | "inactive";
+type Variant = "renewal" | "inactive" | "birthday";
 
 const LABELS: Record<Variant, string> = {
   renewal: "💬 Remind on WhatsApp",
   inactive: "💬 Message",
+  birthday: "🎂 Wish",
 };
 
 // One-tap WhatsApp message to a member. Renders an enabled link when the member
 // has a phone, otherwise a disabled button with a hint tooltip.
 //   variant 'renewal'  → renewal reminder (requires expiresAt)
 //   variant 'inactive' → "we miss you" nudge
+//   variant 'birthday' → birthday wish
 export function WhatsAppReminderButton({
   name,
   phone,
@@ -46,6 +53,8 @@ export function WhatsAppReminderButton({
   const href =
     variant === "inactive"
       ? waInactiveHref(name, phone, lang)
+      : variant === "birthday"
+      ? waBirthdayHref(name, phone, lang)
       : waReminderHref(name, phone, expiresAt ?? "");
 
   return (

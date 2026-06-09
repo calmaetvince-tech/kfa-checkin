@@ -65,3 +65,20 @@ export function waInactiveHref(
   const text = encodeURIComponent(inactiveMessage(name, lang));
   return `https://wa.me/${waDigits(phone)}?text=${text}`;
 }
+
+// --- birthday wish -----------------------------------------------------------
+export function birthdayMessage(name: string, lang: Lang): string {
+  const fn = firstName(name);
+  return lang === "el"
+    ? `Χρόνια πολλά ${fn}! 🎂🥊 Δώρο μας: ένα δωρεάν μάθημα σήμερα. Σε περιμένουμε!`
+    : `Happy birthday ${fn}! 🎂🥊 Our gift: a free class today. See you!`;
+}
+
+export function waBirthdayHref(
+  name: string,
+  phone: string,
+  lang: Lang
+): string {
+  const text = encodeURIComponent(birthdayMessage(name, lang));
+  return `https://wa.me/${waDigits(phone)}?text=${text}`;
+}

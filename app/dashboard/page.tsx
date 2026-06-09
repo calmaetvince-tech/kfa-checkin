@@ -23,6 +23,13 @@ type TodayCheckIn = {
   members: { name: string } | { name: string }[] | null;
 };
 
+type BirthdayRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  date_of_birth: string | null;
+};
+
 function memberName(m: TodayCheckIn["members"]): string {
   if (!m) return "Member";
   return Array.isArray(m) ? m[0]?.name ?? "Member" : m.name;
@@ -34,20 +41,26 @@ export default async function DashboardPage() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
 
-  const [{ data: members, error }, { data: todayRaw }] = await Promise.all([
-    supabase
-      .from("member_month_stats")
-      .select("*")
-      .order("name", { ascending: true })
-      .returns<MemberStat[]>(),
-    supabase
-      .from("check_ins")
-      .select("id, checked_in_at, member_id, members(name)")
-      .gte("checked_in_at", startOfToday.toISOString())
-      .order("checked_in_at", { ascending: false })
-      .limit(100)
-      .returns<TodayCheckIn[]>(),
-  ]);
+  const [{ data: members, error }, { data: todayRaw }, { data: birthdayRaw }] =
+    await Promise.all([
+      supabase
+        .from("member_month_stats")
+        .select("*")
+        .order("name", { ascending: true })
+        .returns<MemberStat[]>(),
+      supabase
+        .from("check_ins")
+        .select("id, checked_in_at, member_id, members(name)")
+        .gte("checked_in_at", startOfToday.toISOString())
+        .order("checked_in_at", { ascending: false })
+        .limit(100)
+        .returns<TodayCheckIn[]>(),
+      supabase
+        .from("members")
+        .select("id, name, phone, date_of_birth")
+        .not("date_of_birth", "is", null)
+        .returns<BirthdayRow[]>(),
+    ]);
 
   if (error) {
     return (
@@ -115,8 +128,54 @@ export default async function DashboardPage() {
     });
   const INACTIVE_CAP = 10;
 
+  // Today's birthdays — compare DOB month/day against today in Europe/Athens.
+  const athensParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Athens",
+    day: "2-digit",
+    month: "2-digit",
+  }).formatToParts(new Date());
+  const todayMonth = Number(
+    athensParts.find((p) => p.type === "month")?.value
+  );
+  const todayDay = Number(athensParts.find((p) => p.type === "day")?.value);
+  const todaysBirthdays = (birthdayRaw ?? []).filter((m) => {
+    if (!m.date_of_birth) return false;
+    const [, mm, dd] = m.date_of_birth.split("-").map(Number);
+    return mm === todayMonth && dd === todayDay;
+  });
+
   return (
     <div className="flex flex-col gap-4">
+      {/* BIRTHDAYS ------------------------------------------------------ */}
+      {todaysBirthdays.length > 0 && (
+        <section
+          id="birthdays"
+          className="card flex flex-col gap-2 border-brand/40 bg-gradient-to-br from-brand/10 to-transparent"
+        >
+          <h2 className="font-semibold">🎂 Birthday today</h2>
+          <ul className="flex flex-col gap-1">
+            {todaysBirthdays.map((m) => (
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-2"
+              >
+                <Link
+                  href={`/dashboard/member/${m.id}`}
+                  className="font-medium truncate hover:text-brand min-w-0"
+                >
+                  {m.name}
+                </Link>
+                <WhatsAppReminderButton
+                  name={m.name}
+                  phone={m.phone}
+                  variant="birthday"
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="grid grid-cols-3 gap-2">
         <Stat label="Members" value={list.length} />
         <Stat label="Active subs" value={activeCount} tone="ok" />
