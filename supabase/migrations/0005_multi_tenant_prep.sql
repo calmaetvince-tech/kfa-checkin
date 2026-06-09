@@ -69,6 +69,28 @@ $$;
 
 grant execute on function public.current_gym_id() to authenticated;
 
+-- 6b. auto-assign gym on member insert ----------------------------------------
+-- gym_id is NOT NULL; this trigger fills it from the calling admin's gym when
+-- the insert omits it, so existing app code keeps working.
+create or replace function public.set_member_gym_id()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if new.gym_id is null then
+    new.gym_id := public.current_gym_id();
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists members_set_gym_id on public.members;
+create trigger members_set_gym_id
+  before insert on public.members
+  for each row execute function public.set_member_gym_id();
+
 -- 7. gym-scoped RLS -----------------------------------------------------------
 -- members: an admin manages only members of their own gym.
 drop policy if exists "admins manage members" on public.members;
