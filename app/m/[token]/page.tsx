@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
 import { rateLimit } from "@/lib/ratelimit";
+import { memberGreeting } from "@/lib/greeting";
 import { Logo } from "@/components/Logo";
 import { Heatmap } from "@/components/Heatmap";
 import { InstallPrompt } from "@/components/InstallPrompt";
@@ -51,6 +52,8 @@ type MemberRow = {
   visits_all_time: number;
   gym_id: string | null;
   gym_name: string | null;
+  date_of_birth: string | null;
+  language: string | null;
 };
 
 type VisitRow = { id: string; checked_in_at: string };
@@ -117,9 +120,31 @@ export default async function MemberSelfPage({
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   const myUrl = `${appUrl}/m/${member.qr_token}`;
 
+  const greeting = memberGreeting({
+    name: member.name,
+    language: member.language,
+    streak: streak.current_streak_days,
+    dateOfBirth: member.date_of_birth,
+    expiresAt: member.subscription_expires_at,
+    createdAt: member.created_at,
+    visitsAllTime: member.visits_all_time,
+    lastVisitAt: recentVisits[0]?.checked_in_at ?? null,
+  });
+
   return (
     <main className="flex flex-col gap-4 pt-2">
       <MemberTokenSaver token={member.qr_token} />
+
+      {/* Personalized time-aware greeting — feels like the page is talking. */}
+      <section className="rounded-xl bg-brand/10 border border-brand/20 px-4 py-3 text-center">
+        <p className="text-sm leading-relaxed">
+          <span className="font-semibold text-neutral-100">
+            {greeting.greeting}
+          </span>{" "}
+          <span className="text-neutral-300">{greeting.context}</span>
+        </p>
+      </section>
+
       <header className="text-center flex flex-col items-center gap-2">
         <Logo size="lg" />
         <h1 className="text-2xl font-bold">{member.name}</h1>
