@@ -6,6 +6,7 @@ import { renewSubscription } from "./actions";
 import { ShareButtons } from "./ShareButtons";
 import { DangerActions } from "./DangerActions";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
+import { MemberStats } from "@/components/MemberStats";
 
 export const dynamic = "force-dynamic";
 
@@ -40,14 +41,9 @@ export default async function MemberDetailPage({
     .select("id, checked_in_at")
     .eq("member_id", member.id)
     .order("checked_in_at", { ascending: false })
-    .limit(50);
+    .limit(1000);
 
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const visitsThisMonth = (checkIns ?? []).filter(
-    (c) => new Date(c.checked_in_at) >= startOfMonth
-  ).length;
-  const totalVisits = checkIns?.length ?? 0;
+  const allTimestamps = (checkIns ?? []).map((c) => c.checked_in_at);
 
   const s = statusLabel(member.subscription_expires_at);
   const appUrl =
@@ -191,21 +187,14 @@ export default async function MemberDetailPage({
         )}
       </section>
 
-      {/* VISITS ----------------------------------------------------------- */}
-      <section className="card flex flex-col gap-3">
-        <h2 className="font-semibold">Visits</h2>
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="bg-neutral-800/60 rounded p-2 text-center">
-            <p className="text-2xl font-bold">{totalVisits}</p>
-            <p className="text-xs text-neutral-500">All-time (last 50)</p>
-          </div>
-          <div className="bg-neutral-800/60 rounded p-2 text-center">
-            <p className="text-2xl font-bold text-brand">{visitsThisMonth}</p>
-            <p className="text-xs text-neutral-500">This month</p>
-          </div>
-        </div>
+      {/* ATTENDANCE STATS ------------------------------------------------- */}
+      <MemberStats checkIns={allTimestamps} />
+
+      {/* RECENT VISITS ---------------------------------------------------- */}
+      <section className="card flex flex-col gap-2">
+        <h2 className="font-semibold">Recent visits</h2>
         <ul className="text-sm divide-y divide-neutral-800">
-          {(checkIns ?? []).slice(0, 20).map((c) => (
+          {(checkIns ?? []).slice(0, 15).map((c) => (
             <li key={c.id} className="py-1.5">
               {fmtDateTime(c.checked_in_at)}
             </li>
