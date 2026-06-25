@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
-import { statusLabel, fmtDate } from "@/lib/format";
+import { statusLabel, fmtDate, fmtTime, startOfGymTodayISO } from "@/lib/format";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 
 export const dynamic = "force-dynamic";
@@ -75,8 +75,7 @@ function summarizeByPart(items: { checked_in_at: string }[]) {
 export default async function DashboardPage() {
   const { supabase } = await requireOwner();
 
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = startOfGymTodayISO();
 
   const [{ data: members, error }, { data: todayRaw }, { data: birthdayRaw }] =
     await Promise.all([
@@ -84,7 +83,7 @@ export default async function DashboardPage() {
       supabase
         .from("check_ins")
         .select("id, checked_in_at, member_id, members(name)")
-        .gte("checked_in_at", startOfToday.toISOString())
+        .gte("checked_in_at", startOfToday)
         .order("checked_in_at", { ascending: false })
         .limit(100)
         .returns<TodayCheckIn[]>(),
@@ -326,10 +325,7 @@ export default async function DashboardPage() {
                   {memberName(c.members)}
                 </Link>
                 <span className="text-xs text-neutral-500 shrink-0">
-                  {new Date(c.checked_in_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  {fmtTime(c.checked_in_at)}
                 </span>
               </li>
             ))}
