@@ -31,16 +31,26 @@ export async function generateMetadata({
   const gymName = member?.gym_name ?? "Kallistis Fight Academy";
   const title = `${name} — ${gymName} Check-in`;
   const description = `${name}'s personal check-in QR for ${gymName}`;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const ogImage = `${appUrl}/brand/og-image.png`;
   return {
     title,
     description,
     // Override the global manifest with a per-member one whose start_url is
     // this member's QR page — so the home-screen icon opens directly here.
     manifest: `/m/${params.token}/manifest.webmanifest`,
-    // NOTE: the OG/Twitter image is provided dynamically by the sibling
-    // opengraph-image.tsx (shows the member's name + current streak).
-    openGraph: { title, description },
-    twitter: { card: "summary_large_image", title, description },
+    // Branded KFA link-preview card (logo + "time to train").
+    openGraph: {
+      title,
+      description,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
   };
 }
 
