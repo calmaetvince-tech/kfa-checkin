@@ -9,6 +9,7 @@ import { rateLimit } from "@/lib/ratelimit";
 import { memberGreeting } from "@/lib/greeting";
 import { Logo } from "@/components/Logo";
 import { Heatmap } from "@/components/Heatmap";
+import { MonthlyHistory } from "@/components/MonthlyHistory";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { MemberTokenSaver } from "@/components/MemberTokenSaver";
 import { ForgetDeviceButton } from "@/components/ForgetDeviceButton";
@@ -128,6 +129,17 @@ export default async function MemberSelfPage({
   const activeDays = ((activeDaysData as { active_day: string }[] | null) ?? [])
     .map((r) => r.active_day);
 
+  const { data: monthlyData } = await supabase.rpc("get_member_monthly", {
+    p_token: params.token,
+    p_months: 6,
+  });
+  const monthlyCounts: Record<string, number> = {};
+  for (const row of (monthlyData as
+    | { month_start: string; visits: number }[]
+    | null) ?? []) {
+    monthlyCounts[row.month_start.slice(0, 7)] = Number(row.visits);
+  }
+
   const s = statusLabel(member.subscription_expires_at);
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -220,6 +232,8 @@ export default async function MemberSelfPage({
       </section>
 
       <Heatmap activeDays={activeDays} />
+
+      <MonthlyHistory counts={monthlyCounts} months={6} />
 
       <section className="card flex flex-col gap-2 text-sm">
         <h2 className="font-semibold">Subscription</h2>

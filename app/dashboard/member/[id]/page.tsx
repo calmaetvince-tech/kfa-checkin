@@ -7,6 +7,7 @@ import { ShareButtons } from "./ShareButtons";
 import { DangerActions } from "./DangerActions";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 import { MemberStats } from "@/components/MemberStats";
+import { MonthlyHistory } from "@/components/MonthlyHistory";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,18 @@ export default async function MemberDetailPage({
     .limit(1000);
 
   const allTimestamps = (checkIns ?? []).map((c) => c.checked_in_at);
+
+  // Monthly memory (Athens months) for the owner — full year view.
+  const monthlyCounts: Record<string, number> = {};
+  const ymFmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Athens",
+    year: "numeric",
+    month: "2-digit",
+  });
+  for (const ts of allTimestamps) {
+    const ym = ymFmt.format(new Date(ts));
+    monthlyCounts[ym] = (monthlyCounts[ym] ?? 0) + 1;
+  }
 
   const s = statusLabel(member.subscription_expires_at);
   const appUrl =
@@ -235,6 +248,9 @@ export default async function MemberDetailPage({
 
       {/* ATTENDANCE STATS ------------------------------------------------- */}
       <MemberStats checkIns={allTimestamps} />
+
+      {/* MONTHLY MEMORY --------------------------------------------------- */}
+      <MonthlyHistory counts={monthlyCounts} months={12} />
 
       {/* RECENT VISITS ---------------------------------------------------- */}
       <section className="card flex flex-col gap-2">
