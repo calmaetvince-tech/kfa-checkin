@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
@@ -12,6 +13,7 @@ import { InstallPrompt } from "@/components/InstallPrompt";
 import { MemberTokenSaver } from "@/components/MemberTokenSaver";
 import { ForgetDeviceButton } from "@/components/ForgetDeviceButton";
 import { CheckInWatcher } from "@/components/CheckInWatcher";
+import { CelebrationDemo } from "@/components/CelebrationDemo";
 
 export const dynamic = "force-dynamic";
 
@@ -141,6 +143,9 @@ export default async function MemberSelfPage({
         initialVisits={member.visits_all_time}
         lang={member.language === "en" ? "en" : "el"}
       />
+      <Suspense fallback={null}>
+        <CelebrationDemo lang={member.language === "en" ? "en" : "el"} />
+      </Suspense>
 
       {/* Personalized time-aware greeting — feels like the page is talking. */}
       <section className="rounded-xl bg-brand/10 border border-brand/20 px-4 py-3 text-center">

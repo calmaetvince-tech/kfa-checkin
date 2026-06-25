@@ -93,6 +93,50 @@ export default async function MemberDetailPage({
         />
       </section>
 
+      {/* MEMBER VIEW PREVIEW ---------------------------------------------- */}
+      <section className="card flex flex-col gap-3">
+        <h2 className="font-semibold">👁 Preview member view</h2>
+        <p className="text-xs text-neutral-500">
+          See exactly what {member.name.split(" ")[0]} sees on their phone —
+          including the celebration that plays when you scan them.
+        </p>
+        <a
+          href={memberUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-ghost w-full"
+        >
+          Open member view ↗
+        </a>
+        <p className="text-xs text-neutral-500 mt-1">Preview the scan celebration:</p>
+        <div className="grid grid-cols-3 gap-2">
+          <a
+            href={`${memberUrl}?celebrate=base`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost text-sm py-2"
+          >
+            🥊 Check-in
+          </a>
+          <a
+            href={`${memberUrl}?celebrate=streak`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost text-sm py-2 text-orange-300"
+          >
+            🔥 3-day
+          </a>
+          <a
+            href={`${memberUrl}?celebrate=epic`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-ghost text-sm py-2 text-amber-300"
+          >
+            🏆 7-day
+          </a>
+        </div>
+      </section>
+
       {/* SUBSCRIPTION ----------------------------------------------------- */}
       <section className="card flex flex-col gap-3">
         <h2 className="font-semibold">Subscription</h2>
