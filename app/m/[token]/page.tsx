@@ -11,6 +11,7 @@ import { Heatmap } from "@/components/Heatmap";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { MemberTokenSaver } from "@/components/MemberTokenSaver";
 import { ForgetDeviceButton } from "@/components/ForgetDeviceButton";
+import { CheckInWatcher } from "@/components/CheckInWatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -134,6 +135,12 @@ export default async function MemberSelfPage({
   return (
     <main className="flex flex-col gap-4 pt-2">
       <MemberTokenSaver token={member.qr_token} />
+      <CheckInWatcher
+        token={member.qr_token}
+        memberId={member.id}
+        initialVisits={member.visits_all_time}
+        lang={member.language === "en" ? "en" : "el"}
+      />
 
       {/* Personalized time-aware greeting — feels like the page is talking. */}
       <section className="rounded-xl bg-brand/10 border border-brand/20 px-4 py-3 text-center">
