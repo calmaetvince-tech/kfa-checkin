@@ -154,7 +154,7 @@ export default async function MemberSelfPage({
         lang={member.language === "en" ? "en" : "el"}
       />
       <Suspense fallback={null}>
-        <CelebrationDemo lang={member.language === "en" ? "en" : "el"} />
+        <CelebrationDemo />
       </Suspense>
 
       {/* Personalized time-aware greeting — feels like the page is talking. */}

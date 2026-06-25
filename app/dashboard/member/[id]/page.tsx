@@ -108,31 +108,33 @@ export default async function MemberDetailPage({
         >
           Open member view ↗
         </a>
-        <p className="text-xs text-neutral-500 mt-1">Preview the scan celebration:</p>
+        <p className="text-xs text-neutral-500 mt-1">
+          Preview the scan videos (best on a phone):
+        </p>
         <div className="grid grid-cols-3 gap-2">
           <a
-            href={`${memberUrl}?celebrate=base`}
+            href={`${memberUrl}?celebrate=first`}
             target="_blank"
             rel="noopener noreferrer"
             className="btn-ghost text-sm py-2"
           >
-            🥊 Check-in
+            ▶ 1st scan
           </a>
           <a
-            href={`${memberUrl}?celebrate=streak`}
+            href={`${memberUrl}?celebrate=second`}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost text-sm py-2 text-orange-300"
+            className="btn-ghost text-sm py-2"
           >
-            🔥 3-day
+            ▶ 2nd scan
           </a>
           <a
-            href={`${memberUrl}?celebrate=epic`}
+            href={`${memberUrl}?celebrate=third`}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-ghost text-sm py-2 text-amber-300"
+            className="btn-ghost text-sm py-2"
           >
-            🏆 7-day
+            ▶ 3rd+ scan
           </a>
         </div>
       </section>

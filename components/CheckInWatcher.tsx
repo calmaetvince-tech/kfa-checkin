@@ -2,29 +2,31 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
-import {
-  CelebrationOverlay,
-  type CelebrationTier,
-} from "./CelebrationOverlay";
+import { CelebrationOverlay } from "./CelebrationOverlay";
 
-const STREAK_TIER = 3; // flames
-const EPIC_TIER = 7; // gold explosion
 const POLL_MS = 3000;
 
-function tierFor(streak: number): CelebrationTier {
-  if (streak >= EPIC_TIER) return "epic";
-  if (streak >= STREAK_TIER) return "streak";
-  return "base";
+// 1st scan → first, 2nd → second, 3rd and beyond → third.
+export function videoForScan(n: number): string {
+  if (n <= 1) return "/celebrations/first.mp4";
+  if (n === 2) return "/celebrations/second.mp4";
+  return "/celebrations/third.mp4";
+}
+
+function isMobile(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(max-width: 820px)").matches ||
+    /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  );
 }
 
 // Lives on the member's open QR page. Polls the visit count; when it ticks up
-// (the owner just scanned them), it looks up the resulting streak and fires the
-// matching celebration. No realtime/RLS plumbing needed.
+// (the owner just scanned them) it plays the celebration video for that scan
+// number. Mobile only.
 export function CheckInWatcher({
   token,
-  memberId,
   initialVisits,
-  lang = "el",
 }: {
   token: string;
   memberId: string;
@@ -32,12 +34,10 @@ export function CheckInWatcher({
   lang?: "el" | "en";
 }) {
   const lastCount = useRef(initialVisits);
-  const [celebration, setCelebration] = useState<{
-    tier: CelebrationTier;
-    streak: number;
-  } | null>(null);
+  const [src, setSrc] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isMobile()) return;
     const supabase = createSupabaseBrowserClient();
     let cancelled = false;
 
@@ -50,14 +50,7 @@ export function CheckInWatcher({
       const count = Number(data);
       if (count > lastCount.current) {
         lastCount.current = count;
-        // a check-in just happened — get the new streak to pick the tier
-        const { data: s } = await supabase.rpc("get_member_streak", {
-          p_member_id: memberId,
-        });
-        const streak =
-          (s as { current_streak_days: number }[] | null)?.[0]
-            ?.current_streak_days ?? 1;
-        if (!cancelled) setCelebration({ tier: tierFor(streak), streak });
+        setSrc(videoForScan(count));
       }
     }
 
@@ -66,15 +59,8 @@ export function CheckInWatcher({
       cancelled = true;
       clearInterval(id);
     };
-  }, [token, memberId]);
+  }, [token]);
 
-  if (!celebration) return null;
-  return (
-    <CelebrationOverlay
-      tier={celebration.tier}
-      streak={celebration.streak}
-      lang={lang}
-      onClose={() => setCelebration(null)}
-    />
-  );
+  if (!src) return null;
+  return <CelebrationOverlay src={src} onClose={() => setSrc(null)} />;
 }
