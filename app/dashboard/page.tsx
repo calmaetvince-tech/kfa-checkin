@@ -37,6 +37,41 @@ function memberName(m: TodayCheckIn["members"]): string {
   return Array.isArray(m) ? m[0]?.name ?? "Member" : m.name;
 }
 
+// Bucket a check-in into a part of the day, in Europe/Athens local time.
+const PART_DEFS = [
+  { key: "morning", label: "Morning", emoji: "🌅", lo: 6, hi: 12 },
+  { key: "afternoon", label: "Afternoon", emoji: "☀️", lo: 12, hi: 17 },
+  { key: "evening", label: "Evening", emoji: "🌆", lo: 17, hi: 22 },
+  { key: "late", label: "Late", emoji: "🌙", lo: 22, hi: 30 }, // 22:00–05:59
+] as const;
+
+function athensHour(iso: string): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Athens",
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  let h = Number(parts.find((p) => p.type === "hour")?.value);
+  if (h === 24) h = 0;
+  return h;
+}
+
+function partKey(hour: number): string {
+  if (hour >= 6 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 17) return "afternoon";
+  if (hour >= 17 && hour < 22) return "evening";
+  return "late";
+}
+
+function summarizeByPart(items: { checked_in_at: string }[]) {
+  const counts: Record<string, number> = {};
+  for (const it of items) {
+    const k = partKey(athensHour(it.checked_in_at));
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+  return PART_DEFS.map((d) => ({ ...d, count: counts[d.key] ?? 0 }));
+}
+
 export default async function DashboardPage() {
   const { supabase } = await requireOwner();
 
@@ -243,6 +278,32 @@ export default async function DashboardPage() {
           <h2 className="font-semibold">Today&apos;s check-ins</h2>
           <span className="text-xs text-neutral-500">{today.length}</span>
         </div>
+
+        {today.length > 0 && (
+          <div className="grid grid-cols-4 gap-1.5">
+            {summarizeByPart(today).map((p) => (
+              <div
+                key={p.key}
+                className={`rounded-lg p-2 text-center ${
+                  p.count > 0
+                    ? "bg-brand/15 border border-brand/30"
+                    : "bg-neutral-800/40"
+                }`}
+              >
+                <div className="text-base leading-none">{p.emoji}</div>
+                <div
+                  className={`text-lg font-bold leading-tight ${
+                    p.count > 0 ? "text-brand" : "text-neutral-600"
+                  }`}
+                >
+                  {p.count}
+                </div>
+                <div className="text-[10px] text-neutral-500">{p.label}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {today.length === 0 ? (
           <p className="text-sm text-neutral-500">
             Nobody in yet today. Open the{" "}
