@@ -13,7 +13,9 @@ type MemberStat = {
   subscription_renewed_at: string | null;
   subscription_expires_at: string | null;
   visits_this_month: number;
+  total_visits: number;
   last_visit_at: string | null;
+  current_streak: number;
 };
 
 type TodayCheckIn = {
@@ -43,11 +45,7 @@ export default async function DashboardPage() {
 
   const [{ data: members, error }, { data: todayRaw }, { data: birthdayRaw }] =
     await Promise.all([
-      supabase
-        .from("member_month_stats")
-        .select("*")
-        .order("name", { ascending: true })
-        .returns<MemberStat[]>(),
+      supabase.rpc("get_members_overview"),
       supabase
         .from("check_ins")
         .select("id, checked_in_at, member_id, members(name)")
@@ -70,7 +68,7 @@ export default async function DashboardPage() {
     );
   }
 
-  const list = members ?? [];
+  const list = (members ?? []) as MemberStat[];
   const today = todayRaw ?? [];
 
   const now = Date.now();
@@ -381,30 +379,47 @@ export default async function DashboardPage() {
       )}
 
       <ul className="flex flex-col gap-2">
-        {list.map((m) => {
-          const s = statusLabel(m.subscription_expires_at);
-          return (
-            <li key={m.member_id}>
-              <Link
-                href={`/dashboard/member/${m.member_id}`}
-                className="card flex items-center justify-between gap-3 hover:border-brand"
-              >
-                <div className="min-w-0">
-                  <p className="font-medium truncate">{m.name}</p>
-                  <p className="text-xs text-neutral-500">
-                    {m.plan ? `${m.plan} · ` : ""}
-                    {m.visits_this_month} visit
-                    {m.visits_this_month === 1 ? "" : "s"} this month · last{" "}
-                    {fmtDate(m.last_visit_at)}
-                  </p>
-                </div>
-                <span className={`badge-${s.tone} shrink-0`}>{s.label}</span>
-              </Link>
-            </li>
-          );
-        })}
+        {list.map((m) => (
+          <MemberRow key={m.member_id} m={m} />
+        ))}
       </ul>
     </div>
+  );
+}
+
+function MemberRow({ m }: { m: MemberStat }) {
+  const s = statusLabel(m.subscription_expires_at);
+  return (
+    <li>
+      <Link
+        href={`/dashboard/member/${m.member_id}`}
+        className="card flex flex-col gap-1 hover:border-brand"
+      >
+        <div className="flex items-center justify-between gap-2">
+          <p className="font-medium truncate">{m.name}</p>
+          <span className={`badge-${s.tone} shrink-0`}>{s.label}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="text-neutral-400 truncate">
+            {m.plan ?? "No plan"} · expires{" "}
+            <span className="text-neutral-200">
+              {fmtDate(m.subscription_expires_at)}
+            </span>
+          </span>
+          {m.current_streak >= 3 && (
+            <span className="shrink-0 text-orange-400 font-medium">
+              🔥 {m.current_streak}
+            </span>
+          )}
+        </div>
+
+        <div className="text-[11px] text-neutral-500">
+          {m.visits_this_month} this month · {m.total_visits} total · last{" "}
+          {fmtDate(m.last_visit_at)}
+        </div>
+      </Link>
+    </li>
   );
 }
 
