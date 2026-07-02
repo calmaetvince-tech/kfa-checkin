@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
 import { rateLimit } from "@/lib/ratelimit";
 import { memberGreeting } from "@/lib/greeting";
+import { rankFor } from "@/lib/rank";
 import { Logo } from "@/components/Logo";
 import { Heatmap } from "@/components/Heatmap";
 import { MonthlyHistory } from "@/components/MonthlyHistory";
@@ -197,24 +198,66 @@ export default async function MemberSelfPage({
         </p>
       </section>
 
-      <header className="text-center flex flex-col items-center gap-2">
+      <header className="text-center flex flex-col items-center gap-3">
         <Logo size="lg" />
-        <AvatarUpload
-          token={member.qr_token}
-          name={member.name}
-          photo={member.photo}
-        />
-        <h1 className="text-2xl font-bold">{member.name}</h1>
-        <div className="mt-1">
+
+        {/* FIGHTER CARD */}
+        <section className="corners card w-full flex flex-col items-center gap-3 py-6 bg-gradient-to-b from-brand/10 via-transparent to-transparent">
+          <AvatarUpload
+            token={member.qr_token}
+            name={member.name}
+            photo={member.photo}
+          />
+          <h1 className="font-display text-4xl leading-none tracking-wide">
+            {member.name}
+          </h1>
+
+          {(() => {
+            const r = rankFor(member.visits_all_time);
+            const isEl = member.language !== "en";
+            const rankName = isEl ? r.rank.el : r.rank.en;
+            const nextName = r.next ? (isEl ? r.next.el : r.next.en) : null;
+            return (
+              <div className="w-full max-w-xs flex flex-col items-center gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-brand/50 bg-brand/15 px-4 py-1.5">
+                  <span>{r.rank.icon}</span>
+                  <span className="font-display text-lg tracking-widest text-brand">
+                    {rankName}
+                  </span>
+                </span>
+
+                {r.next ? (
+                  <>
+                    <div className="w-full h-2 rounded-full bg-neutral-800 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-[#a87c0e] via-brand to-[#eebd35]"
+                        style={{ width: `${Math.max(4, r.progress * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[11px] text-neutral-500">
+                      {isEl
+                        ? `${r.remaining} προπονήσεις μέχρι ${r.next.icon} ${nextName}`
+                        : `${r.remaining} sessions to ${r.next.icon} ${nextName}`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[11px] text-brand">
+                    {isEl ? "Μέγιστο επίπεδο 👑" : "Max rank 👑"}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
           <span className={`badge-${s.tone}`}>{s.label}</span>
-        </div>
+        </section>
       </header>
 
       <InstallPrompt />
 
       <section className="card flex flex-col gap-3 items-center">
         <p className="text-xs text-neutral-500">Show this at the front desk</p>
-        <div className="bg-white p-4 rounded-xl">
+        <div className="corners bg-white p-4 rounded-xl">
           <QRCodeSVG value={myUrl} size={220} />
         </div>
         <p className="text-xs text-neutral-500 text-center">
@@ -230,7 +273,7 @@ export default async function MemberSelfPage({
         <section className="card flex items-center justify-center gap-3 bg-gradient-to-br from-brand/15 to-transparent border-brand/30">
           <span className="text-3xl">🔥</span>
           <div>
-            <p className="text-2xl font-bold text-brand leading-none">
+            <p className="font-display text-3xl text-brand leading-none">
               {streak.current_streak_days} day
               {streak.current_streak_days === 1 ? "" : "s"}
             </p>
@@ -243,13 +286,13 @@ export default async function MemberSelfPage({
 
       <section className="grid grid-cols-2 gap-2">
         <div className="card text-center">
-          <p className="text-3xl font-bold text-brand">
+          <p className="font-display text-4xl text-brand">
             {member.visits_this_month}
           </p>
           <p className="text-xs text-neutral-500">This month</p>
         </div>
         <div className="card text-center">
-          <p className="text-3xl font-bold">{member.visits_all_time}</p>
+          <p className="font-display text-4xl">{member.visits_all_time}</p>
           <p className="text-xs text-neutral-500">All-time</p>
         </div>
       </section>
@@ -261,7 +304,7 @@ export default async function MemberSelfPage({
       {topFighters.length > 0 && (
         <section className="card flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">
+            <h2 className="section-title font-display text-xl tracking-wide">
               🏆 {member.language === "en" ? "Top fighters" : "Top fighters του μήνα"}
             </h2>
             <span className="text-xs text-neutral-500">
@@ -304,7 +347,7 @@ export default async function MemberSelfPage({
       )}
 
       <section className="card flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold">Subscription</h2>
+        <h2 className="section-title font-display text-xl tracking-wide">Subscription</h2>
         <div className="flex justify-between">
           <span className="text-neutral-500">Last renewed</span>
           <span>{fmtDate(member.subscription_renewed_at)}</span>
@@ -320,7 +363,7 @@ export default async function MemberSelfPage({
       </section>
 
       <section className="card flex flex-col gap-2 text-sm">
-        <h2 className="font-semibold">Recent visits</h2>
+        <h2 className="section-title font-display text-xl tracking-wide">Recent visits</h2>
         <ul className="divide-y divide-neutral-800">
           {recentVisits.map((c) => (
             <li key={c.id} className="py-1.5">
