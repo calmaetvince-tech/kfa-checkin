@@ -15,6 +15,8 @@ import { MemberTokenSaver } from "@/components/MemberTokenSaver";
 import { ForgetDeviceButton } from "@/components/ForgetDeviceButton";
 import { CheckInWatcher } from "@/components/CheckInWatcher";
 import { CelebrationDemo } from "@/components/CelebrationDemo";
+import { AvatarUpload } from "@/components/AvatarUpload";
+import { Avatar } from "@/components/Avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,8 @@ type MemberRow = {
   gym_name: string | null;
   date_of_birth: string | null;
   language: string | null;
+  photo: string | null;
+  photo_updated_at: string | null;
 };
 
 type VisitRow = { id: string; checked_in_at: string };
@@ -129,6 +133,20 @@ export default async function MemberSelfPage({
   const activeDays = ((activeDaysData as { active_day: string }[] | null) ?? [])
     .map((r) => r.active_day);
 
+  const { data: fightersData } = await supabase.rpc("get_gym_top_fighters", {
+    p_token: params.token,
+    p_limit: 5,
+  });
+  const topFighters = ((fightersData as
+    | {
+        member_id: string;
+        name: string;
+        photo_updated_at: string | null;
+        visits: number;
+        is_me: boolean;
+      }[]
+    | null) ?? []);
+
   const { data: monthlyData } = await supabase.rpc("get_member_monthly", {
     p_token: params.token,
     p_months: 6,
@@ -181,6 +199,11 @@ export default async function MemberSelfPage({
 
       <header className="text-center flex flex-col items-center gap-2">
         <Logo size="lg" />
+        <AvatarUpload
+          token={member.qr_token}
+          name={member.name}
+          photo={member.photo}
+        />
         <h1 className="text-2xl font-bold">{member.name}</h1>
         <div className="mt-1">
           <span className={`badge-${s.tone}`}>{s.label}</span>
@@ -234,6 +257,51 @@ export default async function MemberSelfPage({
       <Heatmap activeDays={activeDays} />
 
       <MonthlyHistory counts={monthlyCounts} months={6} />
+
+      {topFighters.length > 0 && (
+        <section className="card flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="font-semibold">
+              🏆 {member.language === "en" ? "Top fighters" : "Top fighters του μήνα"}
+            </h2>
+            <span className="text-xs text-neutral-500">
+              {member.language === "en" ? "by visits" : "με επισκέψεις"}
+            </span>
+          </div>
+          <ul className="flex flex-col">
+            {topFighters.map((f, i) => (
+              <li
+                key={f.member_id}
+                className={`flex items-center gap-3 py-2 rounded-lg px-2 -mx-2 ${
+                  f.is_me ? "bg-brand/10 border border-brand/30" : ""
+                }`}
+              >
+                <span className="w-7 text-center text-lg shrink-0">
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : (
+                    <span className="text-xs text-neutral-500">{i + 1}</span>
+                  )}
+                </span>
+                <Avatar
+                  name={f.name}
+                  memberId={f.member_id}
+                  photoVersion={f.photo_updated_at}
+                />
+                <span className="flex-1 font-medium truncate">
+                  {f.name}
+                  {f.is_me && (
+                    <span className="ml-1.5 text-xs text-brand font-semibold">
+                      {member.language === "en" ? "(you)" : "(εσύ)"}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 rounded-full bg-brand/15 border border-brand/30 px-2.5 py-1 text-xs font-bold text-brand tabular-nums">
+                  {f.visits}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="card flex flex-col gap-2 text-sm">
         <h2 className="font-semibold">Subscription</h2>
