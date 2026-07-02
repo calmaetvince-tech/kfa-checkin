@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { hasOwnerSession } from "@/lib/owner-session";
 
 const TOKEN_KEY = "kfa-member-token";
 
@@ -14,6 +15,12 @@ export function MemberRedirect() {
     // Owner explicitly wants the landing page → skip
     if (sp.get("owner") === "1") {
       setChecked(true);
+      return;
+    }
+    // Signed-in owner device → this is the admin's phone; go to the dashboard
+    // (takes priority over any member token saved while previewing members).
+    if (hasOwnerSession()) {
+      router.replace("/dashboard");
       return;
     }
     let token: string | null = null;
