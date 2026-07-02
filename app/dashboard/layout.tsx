@@ -43,7 +43,7 @@ export default async function DashboardLayout({
 
           <Link
             href="/dashboard/scan"
-            className="justify-self-center -mt-7 flex h-16 w-16 flex-col items-center justify-center rounded-full bg-brand text-brand-ink shadow-lg shadow-brand/25 ring-4 ring-neutral-950 active:scale-95 transition"
+            className="justify-self-center -mt-7 flex h-16 w-16 flex-col items-center justify-center rounded-full bg-gradient-to-b from-[#eebd35] via-brand to-[#a87c0e] text-brand-ink shadow-lg shadow-brand/40 ring-4 ring-neutral-950 active:scale-95 transition"
           >
             <span aria-hidden className="text-2xl leading-none">📷</span>
             <span className="text-[10px] font-bold">Scan</span>

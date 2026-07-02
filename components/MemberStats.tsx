@@ -117,7 +117,7 @@ export function MemberStats({ checkIns }: { checkIns: string[] }) {
 
   return (
     <section className="card flex flex-col gap-4">
-      <h2 className="font-semibold">Attendance</h2>
+      <h2 className="section-title font-display text-xl tracking-wide">Attendance</h2>
 
       {/* headline tiles */}
       <div className="grid grid-cols-4 gap-2">

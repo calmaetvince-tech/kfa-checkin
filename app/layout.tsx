@@ -1,5 +1,18 @@
 import type { Metadata, Viewport } from "next";
+import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
+
+// Display face for numbers + section titles (fight-poster feel); Inter carries
+// body text incl. Greek. Greek glyphs inside display text fall back to Inter.
+const display = Bebas_Neue({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-display",
+});
+const inter = Inter({
+  subsets: ["latin", "greek"],
+  variable: "--font-body",
+});
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
@@ -55,7 +68,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className={`dark ${display.variable} ${inter.variable}`}>
       <body>
         <div className="mx-auto max-w-2xl px-4 py-6 min-h-screen">
           {children}

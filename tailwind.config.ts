@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        display: ["var(--font-display)", "var(--font-body)", "sans-serif"],
+        body: ["var(--font-body)", "system-ui", "sans-serif"],
+      },
       colors: {
         // KFA / Kallistis Fight Academy — gold on black
         brand: {

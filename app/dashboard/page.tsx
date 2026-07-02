@@ -4,6 +4,7 @@ import { statusLabel, fmtDate, fmtTime, startOfGymTodayISO } from "@/lib/format"
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/Avatar";
+import { rankFor } from "@/lib/rank";
 
 export const dynamic = "force-dynamic";
 
@@ -344,7 +345,7 @@ export default async function DashboardPage() {
           id="birthdays"
           className="card flex flex-col gap-2 border-brand/40"
         >
-          <h2 className="font-semibold">🎂 Birthday today</h2>
+          <h2 className="section-title font-display text-xl tracking-wide">🎂 Birthday today</h2>
           <ul className="flex flex-col gap-1">
             {todaysBirthdays.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-2">
@@ -384,7 +385,7 @@ export default async function DashboardPage() {
       {topFighters.length > 0 && (
         <section className="card flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">🏆 Top fighters · this month</h2>
+            <h2 className="section-title font-display text-xl tracking-wide">🏆 Top fighters · this month</h2>
             <span className="text-xs text-neutral-500">by visits</span>
           </div>
           <ul className="flex flex-col">
@@ -423,7 +424,7 @@ export default async function DashboardPage() {
       {/* WEEK PULSE -------------------------------------------------------- */}
       <section className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Gym pulse · 7 days</h2>
+          <h2 className="section-title font-display text-xl tracking-wide">Gym pulse · 7 days</h2>
           <span className="text-xs text-neutral-500">
             {pulseTotal} check-in{pulseTotal === 1 ? "" : "s"}
           </span>
@@ -469,7 +470,7 @@ export default async function DashboardPage() {
       {/* TODAY'S CHECK-INS FEED -------------------------------------------- */}
       <section id="today" className="card flex flex-col gap-3">
         <div className="flex items-center justify-between">
-          <h2 className="font-semibold">Today&apos;s check-ins</h2>
+          <h2 className="section-title font-display text-xl tracking-wide">Today&apos;s check-ins</h2>
           <span className="text-xs text-neutral-500">{today.length}</span>
         </div>
 
@@ -539,7 +540,7 @@ export default async function DashboardPage() {
         monthRenewals.length > 0) && (
         <section id="renewals" className="card flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">💳 Subscriptions ending</h2>
+            <h2 className="section-title font-display text-xl tracking-wide">💳 Subscriptions ending</h2>
             <span className="text-xs text-neutral-500">
               {expired.length + nearExpiry.length + monthRenewals.length}
             </span>
@@ -603,7 +604,7 @@ export default async function DashboardPage() {
       {inactiveMembers.length > 0 && (
         <section id="inactive" className="card flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">🕊️ Haven&apos;t seen in a while</h2>
+            <h2 className="section-title font-display text-xl tracking-wide">🕊️ Haven&apos;t seen in a while</h2>
             <span className="text-xs text-neutral-500">
               {inactiveMembers.length}
             </span>
@@ -647,7 +648,7 @@ export default async function DashboardPage() {
 
       {/* ALL MEMBERS -------------------------------------------------------- */}
       <div className="flex items-center justify-between">
-        <h2 id="members" className="text-lg font-semibold">
+        <h2 id="members" className="section-title font-display text-2xl tracking-wide">
           Members
         </h2>
         <span className="text-xs text-neutral-500">{list.length}</span>
@@ -688,6 +689,12 @@ function MemberRow({ m }: { m: MemberStat }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <p className="font-medium truncate">{m.name}</p>
+            <span
+              className="shrink-0 text-sm"
+              title={rankFor(m.total_visits).rank.en}
+            >
+              {rankFor(m.total_visits).rank.icon}
+            </span>
             {m.current_streak >= 3 && (
               <span className="shrink-0 text-xs text-orange-400 font-semibold">
                 🔥{m.current_streak}
@@ -782,7 +789,7 @@ function Stat({
   return (
     <div className="card flex flex-col items-center gap-0.5 py-3">
       <span aria-hidden className="text-sm">{icon}</span>
-      <p className={`text-2xl font-black tabular-nums leading-none ${color}`}>
+      <p className={`font-display text-4xl tabular-nums leading-none ${color}`}>
         {value}
       </p>
       <p className="text-[10px] uppercase tracking-wide text-neutral-500">

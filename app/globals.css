@@ -11,31 +11,121 @@ body {
   height: 100%;
 }
 
+/* Warm carbon black with a faint gold aura up top + film-grain noise.
+   The texture is what kills the "default dark theme" feel. */
 body {
-  @apply bg-brand-ink text-neutral-100 antialiased;
+  @apply text-neutral-100 antialiased;
+  font-family: var(--font-body), system-ui, sans-serif;
+  background-color: #0a0908;
+  background-image:
+    radial-gradient(1100px 480px at 50% -180px, rgba(212, 160, 23, 0.10), transparent 70%),
+    radial-gradient(700px 700px at 110% 110%, rgba(212, 160, 23, 0.05), transparent 65%);
+  background-attachment: fixed;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Fight-poster face for numbers & headings (Greek falls back to Inter). */
+.font-display {
+  font-family: var(--font-display), var(--font-body), sans-serif;
+  letter-spacing: 0.03em;
+  font-weight: 400;
 }
 
 .btn {
-  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-medium transition active:scale-[0.98];
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 font-semibold transition active:scale-[0.98];
 }
 .btn-primary {
-  @apply btn bg-brand text-brand-ink font-semibold hover:bg-brand-dark disabled:opacity-50;
+  @apply btn text-brand-ink disabled:opacity-50;
+  background: linear-gradient(180deg, #eebd35 0%, #d4a017 55%, #a87c0e 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 10px rgba(212, 160, 23, 0.25);
+}
+.btn-primary:hover {
+  background: linear-gradient(180deg, #f6cc55 0%, #ddab1f 55%, #b3860f 100%);
 }
 .btn-ghost {
-  @apply btn border border-neutral-700 hover:bg-neutral-900;
+  @apply btn border border-neutral-700/80 hover:bg-neutral-900 hover:border-brand/40;
 }
 
+/* Cards: gradient depth + hairline gold edge + top highlight. */
 .card {
-  @apply rounded-2xl bg-neutral-900/70 border border-neutral-800 shadow-sm p-4;
+  @apply rounded-2xl p-4;
+  background: linear-gradient(165deg, #171310 0%, #0e0c0a 55%, #0b0a09 100%);
+  border: 1px solid rgba(212, 160, 23, 0.13);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 6px 22px rgba(0, 0, 0, 0.45);
 }
 
 .input {
-  @apply w-full rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-neutral-100;
+  @apply w-full rounded-lg border border-neutral-700 bg-neutral-900/80 px-3 py-2 outline-none focus:border-brand focus:ring-2 focus:ring-brand/30 text-neutral-100;
 }
 
+/* Status tags: chamfered fight-ticket corners instead of default pills. */
 .badge {
-  @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide;
+  clip-path: polygon(
+    7px 0, 100% 0, 100% calc(100% - 7px),
+    calc(100% - 7px) 100%, 0 100%, 0 7px
+  );
 }
-.badge-ok { @apply badge bg-emerald-900/40 text-emerald-200 ring-1 ring-emerald-700/50; }
-.badge-warn { @apply badge bg-amber-900/40 text-amber-200 ring-1 ring-amber-700/50; }
-.badge-bad { @apply badge bg-rose-900/40 text-rose-200 ring-1 ring-rose-700/50; }
+.badge-ok { @apply badge bg-emerald-900/50 text-emerald-200; box-shadow: inset 0 0 0 1px rgba(52,211,153,.25); }
+.badge-warn { @apply badge bg-amber-900/50 text-amber-200; box-shadow: inset 0 0 0 1px rgba(251,191,36,.25); }
+.badge-bad { @apply badge bg-rose-900/50 text-rose-200; box-shadow: inset 0 0 0 1px rgba(251,113,133,.25); }
+
+/* Fighter-card frame: bold gold corner brackets (ring-corner tape). */
+.corners {
+  position: relative;
+}
+.corners::before,
+.corners::after {
+  content: "";
+  position: absolute;
+  width: 38px;
+  height: 38px;
+  border: 3px solid #d4a017;
+  pointer-events: none;
+}
+.corners::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+  border-top-left-radius: 16px;
+}
+.corners::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+  border-bottom-right-radius: 16px;
+}
+
+/* Section titles: small gold corner tick before the text. */
+.section-title {
+  @apply flex items-center gap-2 font-semibold;
+}
+.section-title::before {
+  content: "";
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(180deg, #eebd35, #a87c0e);
+  clip-path: polygon(0 0, 100% 4px, 100% 100%, 0 calc(100% - 4px));
+  flex-shrink: 0;
+}

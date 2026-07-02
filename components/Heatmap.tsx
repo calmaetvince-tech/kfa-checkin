@@ -37,7 +37,7 @@ export function Heatmap({ activeDays }: { activeDays: string[] }) {
   return (
     <section className="card flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Last 30 days</h2>
+        <h2 className="section-title font-display text-xl tracking-wide">Last 30 days</h2>
         <span className="text-xs text-neutral-500">
           {trainedCount} session{trainedCount === 1 ? "" : "s"}
         </span>
