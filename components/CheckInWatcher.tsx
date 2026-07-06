@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 import { CelebrationOverlay } from "./CelebrationOverlay";
+import { RankUpOverlay } from "./RankUpOverlay";
+import { rankFor, type Rank } from "@/lib/rank";
 
 const POLL_MS = 3000;
 
@@ -22,19 +24,24 @@ function isMobile(): boolean {
 }
 
 // Lives on the member's open QR page. Polls the visit count; when it ticks up
-// (the owner just scanned them) it plays the celebration video for that scan
-// number. Mobile only.
+// (the owner just scanned them) it plays the celebration video, and if the new
+// total crossed a rank threshold, follows up with the shareable rank-up card.
 export function CheckInWatcher({
   token,
+  memberName,
   initialVisits,
+  lang = "el",
 }: {
   token: string;
-  memberId: string;
+  memberId?: string;
+  memberName: string;
   initialVisits: number;
   lang?: "el" | "en";
 }) {
   const lastCount = useRef(initialVisits);
+  const pendingRankUp = useRef<Rank | null>(null);
   const [src, setSrc] = useState<string | null>(null);
+  const [rankUp, setRankUp] = useState<Rank | null>(null);
 
   useEffect(() => {
     if (!isMobile()) return;
@@ -49,7 +56,10 @@ export function CheckInWatcher({
       if (cancelled || error || data == null) return;
       const count = Number(data);
       if (count > lastCount.current) {
+        const before = rankFor(lastCount.current).rank;
+        const after = rankFor(count).rank;
         lastCount.current = count;
+        if (after.key !== before.key) pendingRankUp.current = after;
         setSrc(videoForScan(count));
       }
     }
@@ -61,6 +71,23 @@ export function CheckInWatcher({
     };
   }, [token]);
 
-  if (!src) return null;
-  return <CelebrationOverlay src={src} onClose={() => setSrc(null)} />;
+  function closeVideo() {
+    setSrc(null);
+    if (pendingRankUp.current) {
+      setRankUp(pendingRankUp.current);
+      pendingRankUp.current = null;
+    }
+  }
+
+  if (src) return <CelebrationOverlay src={src} onClose={closeVideo} />;
+  if (rankUp)
+    return (
+      <RankUpOverlay
+        name={memberName}
+        rank={rankUp}
+        lang={lang}
+        onClose={() => setRankUp(null)}
+      />
+    );
+  return null;
 }

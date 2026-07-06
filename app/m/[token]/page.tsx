@@ -18,6 +18,9 @@ import { CheckInWatcher } from "@/components/CheckInWatcher";
 import { CelebrationDemo } from "@/components/CelebrationDemo";
 import { AvatarUpload } from "@/components/AvatarUpload";
 import { Avatar } from "@/components/Avatar";
+import { ScheduleCard } from "@/components/ScheduleCard";
+import { BadgesCard } from "@/components/BadgesCard";
+import { MemberSW } from "@/components/MemberSW";
 
 export const dynamic = "force-dynamic";
 
@@ -148,6 +151,20 @@ export default async function MemberSelfPage({
       }[]
     | null) ?? []);
 
+  const { data: badgesData } = await supabase.rpc("get_member_badges", {
+    p_token: params.token,
+  });
+  const earnedBadges = ((badgesData as { badge: string }[] | null) ?? []).map(
+    (b) => b.badge
+  );
+
+  const { data: scheduleData } = await supabase.rpc("get_gym_schedule", {
+    p_token: params.token,
+  });
+  const schedule = ((scheduleData as
+    | { id: string; dow: number; start_time: string; title: string }[]
+    | null) ?? []);
+
   const { data: monthlyData } = await supabase.rpc("get_member_monthly", {
     p_token: params.token,
     p_months: 6,
@@ -178,14 +195,19 @@ export default async function MemberSelfPage({
   return (
     <main className="flex flex-col gap-4 pt-2">
       <MemberTokenSaver token={member.qr_token} />
+      <MemberSW />
       <CheckInWatcher
         token={member.qr_token}
         memberId={member.id}
+        memberName={member.name}
         initialVisits={member.visits_all_time}
         lang={member.language === "en" ? "en" : "el"}
       />
       <Suspense fallback={null}>
-        <CelebrationDemo />
+        <CelebrationDemo
+          name={member.name}
+          lang={member.language === "en" ? "en" : "el"}
+        />
       </Suspense>
 
       {/* Personalized time-aware greeting — feels like the page is talking. */}
@@ -255,6 +277,11 @@ export default async function MemberSelfPage({
 
       <InstallPrompt />
 
+      <ScheduleCard
+        rows={schedule}
+        lang={member.language === "en" ? "en" : "el"}
+      />
+
       <section className="card flex flex-col gap-3 items-center">
         <p className="text-xs text-neutral-500">Show this at the front desk</p>
         <div className="corners bg-white p-4 rounded-xl">
@@ -298,6 +325,11 @@ export default async function MemberSelfPage({
       </section>
 
       <Heatmap activeDays={activeDays} />
+
+      <BadgesCard
+        earned={earnedBadges}
+        lang={member.language === "en" ? "en" : "el"}
+      />
 
       <MonthlyHistory counts={monthlyCounts} months={6} />
 
