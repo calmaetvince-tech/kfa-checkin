@@ -37,12 +37,20 @@ export default async function MemberDetailPage({
     );
   }
 
-  const { data: checkIns } = await supabase
-    .from("check_ins")
-    .select("id, checked_in_at")
-    .eq("member_id", member.id)
-    .order("checked_in_at", { ascending: false })
-    .limit(1000);
+  const [{ data: checkIns }, { data: payments }] = await Promise.all([
+    supabase
+      .from("check_ins")
+      .select("id, checked_in_at")
+      .eq("member_id", member.id)
+      .order("checked_in_at", { ascending: false })
+      .limit(1000),
+    supabase
+      .from("payments")
+      .select("id, amount, months, paid_at")
+      .eq("member_id", member.id)
+      .order("paid_at", { ascending: false })
+      .limit(24),
+  ]);
 
   const allTimestamps = (checkIns ?? []).map((c) => c.checked_in_at);
 
@@ -191,7 +199,7 @@ export default async function MemberDetailPage({
               htmlFor="months"
               className="text-xs text-neutral-500 block mb-1"
             >
-              Extend by (months)
+              Months
             </label>
             <input
               id="months"
@@ -203,8 +211,26 @@ export default async function MemberDetailPage({
               className="input"
             />
           </div>
+          <div className="flex-1">
+            <label
+              htmlFor="amount"
+              className="text-xs text-neutral-500 block mb-1"
+            >
+              Paid (€)
+            </label>
+            <input
+              id="amount"
+              name="amount"
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              min={0}
+              placeholder="40"
+              className="input"
+            />
+          </div>
           <button type="submit" className="btn-primary">
-            Mark renewal
+            Renew
           </button>
         </form>
       </section>
@@ -245,6 +271,30 @@ export default async function MemberDetailPage({
           </>
         )}
       </section>
+
+      {/* PAYMENTS ---------------------------------------------------------- */}
+      {(payments ?? []).length > 0 && (
+        <section className="card flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="section-title font-display text-xl tracking-wide">
+              Payments
+            </h2>
+            <span className="text-xs text-brand font-semibold">
+              €{(payments ?? []).reduce((s, p) => s + Number(p.amount), 0).toFixed(0)} total
+            </span>
+          </div>
+          <ul className="text-sm divide-y divide-neutral-800">
+            {(payments ?? []).map((p) => (
+              <li key={p.id} className="py-1.5 flex justify-between">
+                <span className="text-neutral-400">
+                  {fmtDate(p.paid_at)} · {p.months} mo
+                </span>
+                <span className="font-semibold">€{Number(p.amount).toFixed(2)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {/* ATTENDANCE STATS ------------------------------------------------- */}
       <MemberStats checkIns={allTimestamps} />

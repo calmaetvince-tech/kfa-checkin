@@ -42,6 +42,16 @@ export async function renewSubscription(formData: FormData) {
     })
     .eq("id", id);
 
+  // Record the payment when an amount was entered (revenue tracking).
+  const amountRaw = Number(String(formData.get("amount") ?? "").replace(",", "."));
+  if (Number.isFinite(amountRaw) && amountRaw > 0) {
+    await supabase.from("payments").insert({
+      member_id: id,
+      amount: Math.min(amountRaw, 999999),
+      months,
+    });
+  }
+
   revalidatePath(`/dashboard/member/${id}`);
   revalidatePath("/dashboard");
 }

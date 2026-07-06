@@ -54,6 +54,15 @@ export function fmtTime(d: string | null | undefined): string {
   });
 }
 
+// Athens year-month key ("2026-07") for a timestamp — for bucketing.
+export function gymYM(d: string | Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: GYM_TZ,
+    year: "numeric",
+    month: "2-digit",
+  }).format(typeof d === "string" ? new Date(d) : d);
+}
+
 // Start of "today" in Rhodes local time, returned as a UTC ISO string for
 // querying. DST-safe: derives the real UTC instant of Athens local midnight.
 export function startOfGymTodayISO(): string {
