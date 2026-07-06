@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth";
-import { statusLabel, fmtDate, fmtTime, startOfGymTodayISO } from "@/lib/format";
+import { statusLabel, fmtDate, fmtTime, startOfGymTodayISO, gymYM } from "@/lib/format";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
 import { Logo } from "@/components/Logo";
 import { Avatar } from "@/components/Avatar";
@@ -104,6 +104,7 @@ export default async function DashboardPage() {
     { data: todayRaw },
     { data: birthdayRaw },
     { data: weekRaw },
+    { data: paymentsRaw },
   ] = await Promise.all([
     supabase.rpc("get_members_overview"),
     supabase
@@ -124,6 +125,12 @@ export default async function DashboardPage() {
       .gte("checked_in_at", startOfWeekWindow)
       .limit(2000)
       .returns<WeekCheckIn[]>(),
+    supabase
+      .from("payments")
+      .select("amount, paid_at")
+      .gte("paid_at", new Date(Date.now() - 65 * 86_400_000).toISOString())
+      .limit(2000)
+      .returns<{ amount: number; paid_at: string }[]>(),
   ]);
 
   if (error) {
@@ -296,6 +303,22 @@ export default async function DashboardPage() {
   const pulseMax = Math.max(1, ...pulse.map((p) => p.count));
   const pulseTotal = pulse.reduce((s, p) => s + p.count, 0);
 
+  // Revenue: this Athens month vs last month.
+  const nowYM = gymYM(new Date());
+  const lastYM = gymYM(new Date(Date.now() - 32 * 86_400_000));
+  let revThis = 0;
+  let revLast = 0;
+  for (const p of paymentsRaw ?? []) {
+    const ym = gymYM(p.paid_at);
+    if (ym === nowYM) revThis += Number(p.amount);
+    else if (ym === lastYM) revLast += Number(p.amount);
+  }
+  const hasRevenue = revThis > 0 || revLast > 0;
+  const monthName = new Intl.DateTimeFormat("el-GR", {
+    timeZone: "Europe/Athens",
+    month: "long",
+  }).format(new Date());
+
   // Month totals + leaderboard from the overview data (no extra queries).
   const monthTotal = list.reduce((s, m) => s + m.visits_this_month, 0);
   const bestStreak = Math.max(0, ...list.map((m) => m.current_streak));
@@ -320,23 +343,28 @@ export default async function DashboardPage() {
         <h1 className="mt-1 text-2xl font-black tracking-tight">
           {greeting}, Δάσκαλε. 🥊
         </h1>
-        {chips.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {chips.map((c) => (
-              <a
-                key={c.href}
-                href={c.href}
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${c.cls} active:scale-95 transition`}
-              >
-                {c.label}
-              </a>
-            ))}
-          </div>
-        ) : (
+        {chips.length === 0 && (
           <p className="mt-3 text-sm text-neutral-400">
             Όλα ήσυχα σήμερα — έτοιμος για την επόμενη προπόνηση 👊
           </p>
         )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {chips.map((c) => (
+            <a
+              key={c.href}
+              href={c.href}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${c.cls} active:scale-95 transition`}
+            >
+              {c.label}
+            </a>
+          ))}
+          <Link
+            href="/dashboard/schedule"
+            className="rounded-full border border-neutral-700 bg-neutral-900/60 px-3 py-1.5 text-xs font-semibold text-neutral-300 active:scale-95 transition"
+          >
+            📅 Πρόγραμμα
+          </Link>
+        </div>
       </section>
 
       {/* BIRTHDAYS -------------------------------------------------------- */}
@@ -380,6 +408,36 @@ export default async function DashboardPage() {
         <Stat label="This week" value={pulseTotal} icon="📈" />
         <Stat label="Best streak" value={bestStreak} icon="🔥" tone={bestStreak >= 3 ? "fire" : undefined} />
       </section>
+
+      {/* REVENUE ------------------------------------------------------------ */}
+      {hasRevenue && (
+        <section className="card flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-neutral-500">
+              💶 Έσοδα {monthName}
+            </p>
+            <p className="font-display text-4xl text-brand leading-tight">
+              €{revThis.toFixed(0)}
+            </p>
+          </div>
+          {revLast > 0 && (
+            <div className="text-right">
+              <p className="text-[11px] text-neutral-500">προηγ. μήνας</p>
+              <p className="font-display text-xl text-neutral-400">
+                €{revLast.toFixed(0)}
+              </p>
+              <p
+                className={`text-[11px] font-semibold ${
+                  revThis >= revLast ? "text-emerald-400" : "text-rose-400"
+                }`}
+              >
+                {revThis >= revLast ? "▲" : "▼"}{" "}
+                {Math.abs(((revThis - revLast) / revLast) * 100).toFixed(0)}%
+              </p>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* TOP FIGHTERS ------------------------------------------------------ */}
       {topFighters.length > 0 && (
