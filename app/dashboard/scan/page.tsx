@@ -18,14 +18,28 @@ export default async function ScanPage() {
       <Scanner />
 
       <Link
+        href="/dashboard/camera-kiosk"
+        className="card flex items-center justify-between gap-3 hover:border-brand"
+      >
+        <div>
+          <p className="font-medium">📷 Camera kiosk (self-service)</p>
+          <p className="text-xs text-neutral-500">
+            Leave a spare phone/tablet at reception. Members hold their QR to the
+            camera and check themselves in. No hardware, screen stays awake.
+          </p>
+        </div>
+        <span className="text-brand text-xl shrink-0">→</span>
+      </Link>
+
+      <Link
         href="/dashboard/scan-kiosk"
         className="card flex items-center justify-between gap-3 hover:border-brand"
       >
         <div>
-          <p className="font-medium">🚪 Door kiosk mode</p>
+          <p className="font-medium">🔫 Scanner kiosk (hardware)</p>
           <p className="text-xs text-neutral-500">
-            Full-screen, self-service check-in for a device with a USB/Bluetooth
-            QR scanner mounted at the door.
+            For a device with a USB/Bluetooth QR scanner gun. Fastest option for
+            the pre-class rush.
           </p>
         </div>
         <span className="text-brand text-xl shrink-0">→</span>
