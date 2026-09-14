@@ -335,15 +335,6 @@ export default async function MemberSelfPage({
         </div>
       </section>
 
-      <Heatmap activeDays={activeDays} />
-
-      <BadgesCard
-        earned={earnedBadges}
-        lang={member.language === "en" ? "en" : "el"}
-      />
-
-      <MonthlyHistory counts={monthlyCounts} months={6} />
-
       {/* Always rendered. Hiding it on an empty month meant the board simply
           vanished for everyone between the 1st and the first check-in — which
           is exactly when a member is most likely to go looking for it. */}
@@ -435,6 +426,15 @@ export default async function MemberSelfPage({
           </>
         )}
       </section>
+
+      <Heatmap activeDays={activeDays} />
+
+      <BadgesCard
+        earned={earnedBadges}
+        lang={member.language === "en" ? "en" : "el"}
+      />
+
+      <MonthlyHistory counts={monthlyCounts} months={6} />
 
       <section className="card flex flex-col gap-2 text-sm">
         <h2 className="section-title font-display text-xl tracking-wide">Subscription</h2>
