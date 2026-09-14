@@ -114,15 +114,54 @@ export function QrCard({
           aria-modal="true"
           aria-label={el ? "QR πλήρους οθόνης" : "Full screen QR"}
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-white p-4"
+          className="fixed inset-0 z-[100] flex select-none flex-col items-center justify-center gap-6 overflow-hidden bg-brand-ink px-6"
         >
-          {/* Pure white behind the code and the largest square that fits, so a
-              reception camera gets maximum contrast and target size. */}
-          <QrSquare url={url} />
+          {/* Gold bloom behind the panel — depth without touching the code. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[120vw] w-[120vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(212,160,23,0.16) 0%, rgba(212,160,23,0.05) 38%, transparent 68%)",
+            }}
+          />
 
-          <p className="font-display text-2xl tracking-wide text-neutral-900">
-            {name}
+          <p className="relative font-display text-[11px] tracking-[0.34em] text-brand/80">
+            KALLISTIS FIGHT ACADEMY
           </p>
+
+          {/* The code keeps its own pure-white field with a real quiet zone;
+              the brand styling lives strictly outside that field, so none of
+              it can interfere with a scan. Stops click propagation so a member
+              holding the phone up cannot dismiss it by touching the code. */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="kfa-qr-in relative"
+          >
+            <div className="kfa-qr-glow rounded-[28px] bg-white p-5">
+              <QrSquare url={url} />
+            </div>
+            {/* Brackets sit OUTSIDE the white panel. Inside, they would eat
+                into the code's quiet zone and cost reads for the sake of
+                decoration — gold on black frames it just as well. */}
+            <Bracket className="-left-3 -top-3 border-l-[3px] border-t-[3px] rounded-tl-[14px]" />
+            <Bracket className="-right-3 -top-3 border-r-[3px] border-t-[3px] rounded-tr-[14px]" />
+            <Bracket className="-bottom-3 -left-3 border-b-[3px] border-l-[3px] rounded-bl-[14px]" />
+            <Bracket className="-bottom-3 -right-3 border-b-[3px] border-r-[3px] rounded-br-[14px]" />
+          </div>
+
+          <div className="relative flex flex-col items-center gap-2">
+            <h2 className="font-display text-4xl leading-none tracking-wide text-neutral-50">
+              {name}
+            </h2>
+            <span
+              aria-hidden
+              className="h-px w-16 bg-gradient-to-r from-transparent via-brand to-transparent"
+            />
+            <p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+              {el ? "Δείξε το στην κάμερα" : "Show it to the camera"}
+            </p>
+          </div>
 
           <button
             type="button"
@@ -130,13 +169,24 @@ export function QrCard({
               e.stopPropagation();
               setOpen(false);
             }}
-            className="rounded-full bg-neutral-900 px-6 py-2.5 text-sm font-semibold text-white active:scale-95"
+            className="relative rounded-full border border-brand/40 px-7 py-2.5 text-sm font-semibold text-brand transition active:scale-95"
           >
             {el ? "Κλείσιμο" : "Close"}
           </button>
         </div>
       )}
     </>
+  );
+}
+
+// Gold corner bracket on the white panel — four of them read as a deliberate
+// frame rather than the two-corner tape used elsewhere in the app.
+function Bracket({ className }: { className: string }) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute h-7 w-7 border-brand ${className}`}
+    />
   );
 }
 
@@ -147,10 +197,11 @@ function QrSquare({ url }: { url: string }) {
 
   useEffect(() => {
     function measure() {
+      // Leaves room for the wordmark, name and close button at every height.
       const s = Math.floor(
-        Math.min(window.innerWidth * 0.9, window.innerHeight * 0.62)
+        Math.min(window.innerWidth * 0.78, window.innerHeight * 0.52)
       );
-      setSide(Math.max(180, s));
+      setSide(Math.max(170, s));
     }
     measure();
     window.addEventListener("resize", measure);
@@ -161,5 +212,16 @@ function QrSquare({ url }: { url: string }) {
     };
   }, []);
 
-  return <QRCodeSVG value={url} size={side} level="M" />;
+  // marginSize keeps the mandatory quiet zone inside the SVG itself, so the
+  // code stays scannable no matter what the surrounding panel does.
+  return (
+    <QRCodeSVG
+      value={url}
+      size={side}
+      level="M"
+      marginSize={4}
+      bgColor="#ffffff"
+      fgColor="#000000"
+    />
+  );
 }
