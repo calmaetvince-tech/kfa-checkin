@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { waDigits } from "@/lib/whatsapp";
 
 export function ShareButtons({
   url,
@@ -18,17 +19,13 @@ export function ShareButtons({
     `Welcome to KFA, ${memberName}! 🥊\n\nHere's your personal check-in link — show this QR at the gym. Save it to your phone's home screen for one-tap access:\n\n${url}`
   );
 
-  // Only use direct-to-contact if the phone clearly starts with a "+"
-  // (international format). Otherwise, open the picker so the owner picks
-  // the contact — avoids wa.me's "invalid number" errors.
+  // Uses the same resolver as every other WhatsApp button in the app, so a
+  // plain Greek mobile like "6971234567" — the shape a bulk-imported roster
+  // arrives in — still gets the one-tap send instead of the contact picker.
   const trimmedPhone = (memberPhone ?? "").trim();
-  const digitsOnly = trimmedPhone.replace(/[^\d]/g, "");
-  const isInternational =
-    trimmedPhone.startsWith("+") && digitsOnly.length >= 8;
+  const digits = waDigits(trimmedPhone);
 
-  const waHrefDirect = isInternational
-    ? `https://wa.me/${digitsOnly}?text=${waText}`
-    : null;
+  const waHrefDirect = digits ? `https://wa.me/${digits}?text=${waText}` : null;
   const waHrefPicker = `https://wa.me/?text=${waText}`;
 
   async function copyLink() {
@@ -84,11 +81,11 @@ export function ShareButtons({
         📤 More share options…
       </button>
       {shareErr && <p className="text-xs text-rose-400">{shareErr}</p>}
-      {!isInternational && trimmedPhone && (
+      {!digits && trimmedPhone && (
         <p className="text-xs text-neutral-500">
-          ℹ️ Tip: phone <code>{trimmedPhone}</code> isn&apos;t in international
-          format (e.g. <code>+30 69x xxx xxxx</code>). Edit the member to enable
-          one-tap WhatsApp send.
+          ℹ️ Δεν αναγνώρισα το <code>{trimmedPhone}</code> ως ελληνικό ή διεθνές
+          νούμερο. Γράψ&apos; το με κωδικό χώρας (π.χ.{" "}
+          <code>+44 7700 900123</code>) για αποστολή με ένα tap.
         </p>
       )}
     </div>

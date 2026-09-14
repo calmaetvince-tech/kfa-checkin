@@ -2,23 +2,48 @@
 
 export type Lang = "el" | "en";
 
-// Normalize to international format. Greek defaults:
-//   strip spaces / dashes / parentheses;
-//   leading 0  -> +30 (drop the 0);
-//   no leading + -> prepend +30.
-export function normalizePhone(raw: string): string {
-  let p = raw.replace(/[\s\-()]/g, "");
-  if (p.startsWith("0")) {
-    p = "+30" + p.slice(1);
-  } else if (!p.startsWith("+")) {
-    p = "+30" + p;
+/**
+ * The single place a stored phone becomes a wa.me number.
+ *
+ * Returns digits in international form (no "+"), or null when the number
+ * cannot be resolved confidently — callers must then fall back to WhatsApp's
+ * contact picker rather than guessing. Blindly prefixing +30 would silently
+ * message a stranger in Greece whenever a foreign number was typed without
+ * its country code, which matters now that numbers arrive in bulk from an
+ * imported roster instead of being typed one at a time.
+ */
+export function waDigits(raw: string | null | undefined): string | null {
+  const p = (raw ?? "").replace(/[\s\-().]/g, "");
+  if (!p) return null;
+
+  // Explicit country code, in either notation.
+  if (p.startsWith("+")) {
+    const d = p.slice(1).replace(/\D/g, "");
+    return d.length >= 8 ? d : null;
   }
-  return p;
+  if (p.startsWith("00")) {
+    const d = p.slice(2).replace(/\D/g, "");
+    return d.length >= 8 ? d : null;
+  }
+
+  const digits = p.replace(/\D/g, "");
+  if (digits.length !== p.length) return null; // stray letters — not a number
+
+  // Greek national format: 10 digits, mobile (69…) or landline (2…).
+  if (digits.length === 10 && /^(69|2)/.test(digits)) return "30" + digits;
+
+  // Legacy trunk prefix, e.g. 0697…
+  if (digits.length === 11 && digits.startsWith("0") && /^(69|2)/.test(digits.slice(1))) {
+    return "30" + digits.slice(1);
+  }
+
+  return null;
 }
 
-// wa.me wants digits only (no leading +).
-export function waDigits(raw: string): string {
-  return normalizePhone(raw).replace(/\D/g, "");
+/** Display form, for hints and tooltips. */
+export function normalizePhone(raw: string): string | null {
+  const d = waDigits(raw);
+  return d ? "+" + d : null;
 }
 
 export function firstName(name: string): string {
@@ -45,8 +70,13 @@ export function waReminderHref(
   phone: string,
   expiresAt: string
 ): string {
-  const text = encodeURIComponent(renewalMessage(name, expiresAt));
-  return `https://wa.me/${waDigits(phone)}?text=${text}`;
+  return waHref(waDigits(phone), renewalMessage(name, expiresAt));
+}
+
+/** wa.me link: straight to the contact when known, else the picker. */
+export function waHref(digits: string | null, message: string): string {
+  const text = encodeURIComponent(message);
+  return digits ? `https://wa.me/${digits}?text=${text}` : `https://wa.me/?text=${text}`;
 }
 
 // --- "we miss you" nudge for inactive members --------------------------------
@@ -62,8 +92,7 @@ export function waInactiveHref(
   phone: string,
   lang: Lang
 ): string {
-  const text = encodeURIComponent(inactiveMessage(name, lang));
-  return `https://wa.me/${waDigits(phone)}?text=${text}`;
+  return waHref(waDigits(phone), inactiveMessage(name, lang));
 }
 
 // --- birthday wish -----------------------------------------------------------
@@ -79,6 +108,5 @@ export function waBirthdayHref(
   phone: string,
   lang: Lang
 ): string {
-  const text = encodeURIComponent(birthdayMessage(name, lang));
-  return `https://wa.me/${waDigits(phone)}?text=${text}`;
+  return waHref(waDigits(phone), birthdayMessage(name, lang));
 }
