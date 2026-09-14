@@ -4,6 +4,7 @@ import { randomBytes } from "crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth";
+import { addMonthsClamped } from "@/lib/import-parse";
 
 export async function renewSubscription(formData: FormData) {
   const { supabase } = await requireOwner();
@@ -28,11 +29,9 @@ export async function renewSubscription(formData: FormData) {
       ? new Date(existing.subscription_expires_at)
       : now;
 
-  const newExpiry = new Date(
-    startFrom.getFullYear(),
-    startFrom.getMonth() + months,
-    startFrom.getDate()
-  );
+  // Clamped, so renewing a subscription that expires on the 31st does not
+  // overflow into the following month and give away extra days.
+  const newExpiry = addMonthsClamped(startFrom, months);
 
   await supabase
     .from("members")

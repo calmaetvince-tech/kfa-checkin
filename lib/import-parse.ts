@@ -115,19 +115,29 @@ export function subscriptionWindow(
         );
       })();
 
-  // Adding months has to clamp to the end of the target month. Naively doing
-  // setUTCMonth(+1) on 31 January lands on 3 March, silently handing the member
-  // three free days; the same overflow hits every 29th/30th/31st start date.
-  const day = start.getUTCDate();
-  const end = new Date(start);
-  end.setUTCDate(1);
-  end.setUTCMonth(end.getUTCMonth() + months);
-  const lastDayOfTarget = new Date(
-    Date.UTC(end.getUTCFullYear(), end.getUTCMonth() + 1, 0)
-  ).getUTCDate();
-  end.setUTCDate(Math.min(day, lastDayOfTarget));
+  return {
+    renewedAt: start.toISOString(),
+    expiresAt: addMonthsClamped(start, months).toISOString(),
+  };
+}
 
-  return { renewedAt: start.toISOString(), expiresAt: end.toISOString() };
+/**
+ * Add whole months, clamping to the end of the target month.
+ *
+ * Plain setMonth(+1) on 31 January overflows into 3 March, silently handing
+ * the member three free days — and the same happens for every 29th/30th/31st.
+ * Used by new members, the bulk import and renewals so all three agree.
+ */
+export function addMonthsClamped(from: Date, months: number): Date {
+  const day = from.getUTCDate();
+  const out = new Date(from);
+  out.setUTCDate(1);
+  out.setUTCMonth(out.getUTCMonth() + months);
+  const lastDayOfTarget = new Date(
+    Date.UTC(out.getUTCFullYear(), out.getUTCMonth() + 1, 0)
+  ).getUTCDate();
+  out.setUTCDate(Math.min(day, lastDayOfTarget));
+  return out;
 }
 
 function detectDelimiter(text: string): ParseResult["delimiter"] {
