@@ -38,21 +38,33 @@ html.kfa-loading,html.kfa-loading body{overflow:hidden!important}
 const PRELOADER_JS = `
 (function(){
   try{
-    // Root layout renders on every route; the splash belongs to member pages
-    // only. This runs immediately after the markup is parsed, so the owner's
-    // dashboard never paints it.
-    if(location.pathname.indexOf('/m/') !== 0){
-      var skip = document.getElementById('kfa-preloader');
-      if(skip) skip.style.display='none';
-      return;
+    var el = document.getElementById('kfa-preloader');
+    function bail(){ if(el) el.style.display='none'; }
+
+    // The root layout renders on every route, so decide here whether this load
+    // is a member opening their app. Two launch paths reach that page:
+    //   1. the per-member manifest, whose start_url is /m/<token> — a direct
+    //      full load of the member page;
+    //   2. the root manifest (start_url "/"), where the landing page then
+    //      client-redirects to the saved member token. Without case 2 an
+    //      installed icon could still flash the landing page with no splash.
+    var path = location.pathname;
+    var direct = path.indexOf('/m/') === 0;
+    var viaRoot = false;
+    if(!direct && path === '/'){
+      try{
+        var ownerSignedIn = /sb-[^=;]+-auth-token/.test(document.cookie);
+        viaRoot = !ownerSignedIn && !!localStorage.getItem('kfa-member-token');
+      }catch(e){ viaRoot = false; }
     }
+    if(!direct && !viaRoot){ bail(); return; }
+
     document.documentElement.classList.add('kfa-loading');
     var start = performance.now();
     var MIN = 600, MAX = 3500;
     var done = false;
     function hide(){
       if(done) return; done = true;
-      var el = document.getElementById('kfa-preloader');
       if(!el){ document.documentElement.classList.remove('kfa-loading'); return; }
       var elapsed = performance.now() - start;
       var wait = Math.max(0, MIN - elapsed);
@@ -68,22 +80,37 @@ const PRELOADER_JS = `
       if(document.readyState === 'complete') return cb();
       window.addEventListener('load', cb, { once:true });
     }
-    whenReady(function(){
-      var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
-      var imgs = Array.from(document.images || []).filter(function(i){
-        var r = i.getBoundingClientRect();
-        return r.top < (window.innerHeight || 800) && i.src;
-      }).map(function(i){
-        if(i.decode) return i.decode().catch(function(){});
-        if(i.complete) return Promise.resolve();
-        return new Promise(function(res){ i.addEventListener('load', res, {once:true}); i.addEventListener('error', res, {once:true}); });
+
+    if(viaRoot){
+      // "/" finishes loading almost immediately, long before the redirect
+      // resolves, so waiting on load here would uncover the landing page.
+      // Hold the splash until the member route is actually on screen.
+      var iv = setInterval(function(){
+        if(location.pathname.indexOf('/m/') === 0){
+          clearInterval(iv);
+          setTimeout(hide, 250);
+        }
+      }, 100);
+      setTimeout(function(){ clearInterval(iv); }, MAX);
+    } else {
+      whenReady(function(){
+        var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+        var imgs = Array.from(document.images || []).filter(function(i){
+          var r = i.getBoundingClientRect();
+          return r.top < (window.innerHeight || 800) && i.src;
+        }).map(function(i){
+          if(i.decode) return i.decode().catch(function(){});
+          if(i.complete) return Promise.resolve();
+          return new Promise(function(res){ i.addEventListener('load', res, {once:true}); i.addEventListener('error', res, {once:true}); });
+        });
+        Promise.all([fonts].concat(imgs)).then(hide).catch(hide);
       });
-      Promise.all([fonts].concat(imgs)).then(hide).catch(hide);
-    });
+    }
+
     setTimeout(hide, MAX);
   }catch(e){
-    var el = document.getElementById('kfa-preloader');
-    if(el) el.style.display='none';
+    var elc = document.getElementById('kfa-preloader');
+    if(elc) elc.style.display='none';
     document.documentElement.classList.remove('kfa-loading');
   }
 })();
