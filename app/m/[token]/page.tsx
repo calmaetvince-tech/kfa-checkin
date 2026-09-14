@@ -137,11 +137,14 @@ export default async function MemberSelfPage({
   const activeDays = ((activeDaysData as { active_day: string }[] | null) ?? [])
     .map((r) => r.active_day);
 
+  // Pull the whole board, not just the podium: we show the top 5 but also
+  // want to tell a member ranked 14th where they actually stand, which is the
+  // number that makes them want to come back in.
   const { data: fightersData } = await supabase.rpc("get_gym_top_fighters", {
     p_token: params.token,
-    p_limit: 5,
+    p_limit: 200,
   });
-  const topFighters = ((fightersData as
+  const board = ((fightersData as
     | {
         member_id: string;
         name: string;
@@ -150,6 +153,14 @@ export default async function MemberSelfPage({
         is_me: boolean;
       }[]
     | null) ?? []);
+  const LEADERBOARD_SIZE = 5;
+  const topFighters = board.slice(0, LEADERBOARD_SIZE);
+  const myBoardIndex = board.findIndex((f) => f.is_me);
+  // Only worth an extra row when they're on the board but below the cut.
+  const myStanding =
+    myBoardIndex >= LEADERBOARD_SIZE
+      ? { position: myBoardIndex + 1, row: board[myBoardIndex] }
+      : null;
 
   const { data: badgesData } = await supabase.rpc("get_member_badges", {
     p_token: params.token,
@@ -374,7 +385,43 @@ export default async function MemberSelfPage({
                 </span>
               </li>
             ))}
+            {myStanding && (
+              <>
+                <li
+                  aria-hidden
+                  className="py-1 text-center text-xs text-neutral-700"
+                >
+                  ···
+                </li>
+                <li className="flex items-center gap-3 rounded-lg border border-brand/30 bg-brand/10 px-2 -mx-2 py-2">
+                  <span className="w-7 shrink-0 text-center text-xs font-bold text-brand tabular-nums">
+                    {myStanding.position}
+                  </span>
+                  <Avatar
+                    name={myStanding.row.name}
+                    memberId={myStanding.row.member_id}
+                    photoVersion={myStanding.row.photo_updated_at}
+                  />
+                  <span className="flex-1 truncate font-medium">
+                    {myStanding.row.name}
+                    <span className="ml-1.5 text-xs font-semibold text-brand">
+                      {member.language === "en" ? "(you)" : "(εσύ)"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 rounded-full border border-brand/30 bg-brand/15 px-2.5 py-1 text-xs font-bold tabular-nums text-brand">
+                    {myStanding.row.visits}
+                  </span>
+                </li>
+              </>
+            )}
           </ul>
+          {myStanding && (
+            <p className="text-center text-[11px] text-neutral-500">
+              {member.language === "en"
+                ? `#${myStanding.position} of ${board.length} this month`
+                : `#${myStanding.position} από ${board.length} αυτόν τον μήνα`}
+            </p>
+          )}
         </section>
       )}
 

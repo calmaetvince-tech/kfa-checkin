@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { recordCheckIn, type CheckInResult } from "../scan/actions";
 import { statusLabel, fmtTime } from "@/lib/format";
+import { preloadScanner, startScanner, type Facing } from "@/lib/qr-scanner";
 import {
   chimeSuccess,
   chimeWarn,
@@ -12,12 +13,10 @@ import {
 
 // Unattended self-service check-in on a fixed phone/tablet at reception.
 // A member holds their QR up to the camera; we log the check-in, flash their
-// name for a few seconds, then loop back to scanning automatically. Keeps the
-// screen awake so the camera never sleeps, and only the camera-flip control is
-// tappable so members can't wander into the dashboard.
-const RESULT_DISPLAY_MS = 3500;
-
-type Facing = "environment" | "user";
+// name for a couple of seconds, then loop back to scanning automatically. Keeps
+// the screen awake so the camera never sleeps, and only the camera-flip control
+// is tappable so members can't wander into the dashboard.
+const RESULT_DISPLAY_MS = 2500;
 
 export function CameraKiosk() {
   const [started, setStarted] = useState(false);
@@ -29,6 +28,12 @@ export function CameraKiosk() {
   const wakeLockRef = useRef<any>(null);
   const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pausedRef = useRef(false);
+
+  // Fetch the scanner chunk while the owner is still reading the start screen,
+  // so the tap itself only has to open the camera.
+  useEffect(() => {
+    preloadScanner();
+  }, []);
 
   const acquireWakeLock = useCallback(async () => {
     try {
@@ -85,27 +90,20 @@ export function CameraKiosk() {
   useEffect(() => {
     if (!started) return;
     let cancelled = false;
-    let instance: any = null;
+    let stop: (() => Promise<void>) | null = null;
 
     (async () => {
       setError(null);
       void warmUpAudio();
       void acquireWakeLock();
       try {
-        const mod = await import("html5-qrcode");
-        const html5Qr = new mod.Html5Qrcode("kiosk-qr-reader");
-        instance = html5Qr;
-        await html5Qr.start(
-          { facingMode: facing },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          (decoded: string) => void handleDecoded(decoded),
-          () => {}
-        );
-        if (cancelled) {
-          try {
-            await html5Qr.stop();
-          } catch {}
-        }
+        const stopFn = await startScanner({
+          elementId: "kiosk-qr-reader",
+          facing,
+          onDecode: (decoded) => void handleDecoded(decoded),
+        });
+        stop = stopFn;
+        if (cancelled) void stopFn();
       } catch (e: any) {
         if (!cancelled) {
           setError(
@@ -118,11 +116,7 @@ export function CameraKiosk() {
 
     return () => {
       cancelled = true;
-      if (instance) {
-        try {
-          instance.stop().catch(() => {});
-        } catch {}
-      }
+      if (stop) void stop();
     };
   }, [started, facing, handleDecoded, acquireWakeLock]);
 
@@ -176,10 +170,13 @@ export function CameraKiosk() {
       {/* Camera view is mounted only once started, so the container is visible
           before the effect calls start(). Result card overlays on top. */}
       {started && (
-        <div className="flex flex-col items-center gap-4">
+        <div className="flex w-full flex-col items-center gap-4">
+          {/* Fills the short side of the screen (capped so the heading below
+              still fits) — members aim from a metre away, so the viewfinder
+              needs to be as big as the device allows, not a 256px thumbnail. */}
           <div
             id="kiosk-qr-reader"
-            className="h-64 w-64 overflow-hidden rounded-2xl bg-black corners"
+            className="aspect-square w-[min(88vw,62vh)] overflow-hidden rounded-2xl bg-black corners"
           />
           {!result && !error && (
             <>

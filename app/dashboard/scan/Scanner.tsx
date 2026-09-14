@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { recordCheckIn, type CheckInResult } from "./actions";
 import { statusLabel, fmtDateTime } from "@/lib/format";
+import { preloadScanner, startScanner } from "@/lib/qr-scanner";
 import {
   chimeSuccess,
   chimeWarn,
@@ -16,18 +17,20 @@ export function Scanner() {
   const [status, setStatus] = useState<Status>("idle");
   const [result, setResult] = useState<CheckInResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const scannerRef = useRef<any>(null);
+  const stopRef = useRef<(() => Promise<void>) | null>(null);
   const lastPayloadRef = useRef<{ value: string; at: number } | null>(null);
 
+  // Download the scanner chunk up front so "Start camera" opens video at once
+  // instead of waiting on a ~200KB import.
+  useEffect(() => {
+    preloadScanner();
+  }, []);
+
   const stop = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-      } catch {}
-      try {
-        scannerRef.current.clear();
-      } catch {}
-      scannerRef.current = null;
+    if (stopRef.current) {
+      const fn = stopRef.current;
+      stopRef.current = null;
+      await fn();
     }
   }, []);
 
@@ -69,19 +72,11 @@ export function Scanner() {
     // Unlock the AudioContext on user gesture (browsers require this)
     void warmUpAudio();
     try {
-      const mod = await import("html5-qrcode");
-      const html5Qr = new mod.Html5Qrcode("qr-reader");
-      scannerRef.current = html5Qr;
-      await html5Qr.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decoded: string) => {
-          void handleDecoded(decoded);
-        },
-        () => {
-          // ignore decode failures per frame
-        }
-      );
+      stopRef.current = await startScanner({
+        elementId: "qr-reader",
+        facing: "environment",
+        onDecode: (decoded) => void handleDecoded(decoded),
+      });
     } catch (e: any) {
       setStatus("idle");
       setError(e?.message ?? "Couldn't start camera");
@@ -97,6 +92,8 @@ export function Scanner() {
   return (
     <div className="flex flex-col gap-4">
       <div className="card flex flex-col gap-3">
+        {/* Full-width square viewfinder — the QR fills the frame from arm's
+            length, which is what keeps the decode near-instant. */}
         <div
           id="qr-reader"
           className="w-full aspect-square bg-black rounded-xl overflow-hidden"
