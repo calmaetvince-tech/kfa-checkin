@@ -43,13 +43,41 @@ function partOfDay(hour: number): string {
   return "Nights";
 }
 
-export function MemberStats({ checkIns }: { checkIns: string[] }) {
-  if (checkIns.length === 0) {
+export function MemberStats({
+  checkIns,
+  totalAllTime,
+  windowDays,
+}: {
+  /** Timestamps inside the analysis window, newest first. */
+  checkIns: string[];
+  /** Exact lifetime count, counted in the database — never truncated. */
+  totalAllTime: number;
+  windowDays: number;
+}) {
+  if (totalAllTime === 0) {
     return (
       <section className="card">
         <h2 className="font-semibold mb-1">Attendance</h2>
         <p className="text-sm text-neutral-500">
           No visits yet — stats appear after the first check-in.
+        </p>
+      </section>
+    );
+  }
+
+  // Visits exist, but all of them predate the analysis window. Everything below
+  // divides by the first day in that window, so bail out with the one fact we
+  // still know rather than rendering NaN.
+  if (checkIns.length === 0) {
+    return (
+      <section className="card flex flex-col gap-1">
+        <h2 className="section-title font-display text-xl tracking-wide">
+          Attendance
+        </h2>
+        <p className="font-display text-4xl text-neutral-100">{totalAllTime}</p>
+        <p className="text-sm text-neutral-500">
+          visits all-time · nothing in the last{" "}
+          {Math.round(windowDays / 30)} months, so there are no trends to show.
         </p>
       </section>
     );
@@ -70,7 +98,9 @@ export function MemberStats({ checkIns }: { checkIns: string[] }) {
   const today = athensParts(new Date().toISOString());
   const todayIdx = dayIdx(today.ymd);
 
+  // Charts and streaks describe the window; the headline total is lifetime.
   const total = checkIns.length;
+  const olderVisits = Math.max(0, totalAllTime - total);
   const thisWeek = parsed.filter((p) => p.di >= todayIdx - 6).length;
   const thisMonth = parsed.filter(
     (p) => p.ymd.slice(0, 7) === today.ymd.slice(0, 7)
@@ -121,7 +151,7 @@ export function MemberStats({ checkIns }: { checkIns: string[] }) {
 
       {/* headline tiles */}
       <div className="grid grid-cols-4 gap-2">
-        <Tile value={total} label="Total" />
+        <Tile value={totalAllTime} label="Total" />
         <Tile value={thisWeek} label="This wk" tone="brand" />
         <Tile value={thisMonth} label="This mo" />
         <Tile value={current} label="Streak" tone={current >= 3 ? "fire" : undefined} />
@@ -136,6 +166,16 @@ export function MemberStats({ checkIns }: { checkIns: string[] }) {
         on{" "}
         <span className="text-neutral-200 font-medium">{DOW[peakDow]}</span> ·
         best streak {longest}
+        {olderVisits > 0 && (
+          <>
+            {" "}
+            <span className="text-neutral-500">
+              (charts cover the last {Math.round(windowDays / 30)} months;{" "}
+              {olderVisits} earlier visit{olderVisits === 1 ? "" : "s"} counted
+              in the total only)
+            </span>
+          </>
+        )}
       </p>
 
       {/* time of day */}

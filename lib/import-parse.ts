@@ -12,6 +12,8 @@ export type ParsedRow = {
   startDate: string | null;
   months: number;
   plan: string;
+  /** YYYY-MM-DD. Drives the birthday card on the owner dashboard. */
+  dateOfBirth: string | null;
   discipline: string | null;
   errors: string[];
   /** Same name (case/space-insensitive) appears earlier in this paste. */
@@ -150,7 +152,8 @@ function detectDelimiter(text: string): ParseResult["delimiter"] {
 const HEADER_WORDS = /name|όνομα|ονομα|phone|τηλ|email|start|έναρξη|εναρξη|μήνες|μηνες|month/i;
 
 /**
- * Columns, in order: name, phone, start date, months, program, email.
+ * Columns, in order:
+ *   name, phone, subscription start, months, date of birth, program, email
  * Only the name is required; everything after it may be blank or absent.
  */
 export function parseMembersInput(text: string): ParseResult {
@@ -202,9 +205,15 @@ export function parseMembersInput(text: string): ParseResult {
       }
     }
 
-    const discipline = (cells[4] ?? "").trim() || null;
+    const { iso: dateOfBirth, error: dobErr } = parseDate(cells[4] ?? "");
+    if (dobErr) errors.push(`γενέθλια: ${dobErr}`);
+    if (dateOfBirth && dateOfBirth > new Date().toISOString().slice(0, 10)) {
+      errors.push("η ημερομηνία γέννησης είναι στο μέλλον");
+    }
 
-    const emailCell = (cells[5] ?? "").trim();
+    const discipline = (cells[5] ?? "").trim() || null;
+
+    const emailCell = (cells[6] ?? "").trim();
     let email: string | null = null;
     if (emailCell) {
       if (isEmail(emailCell)) email = emailCell;
@@ -223,6 +232,7 @@ export function parseMembersInput(text: string): ParseResult {
       startDate,
       months,
       plan: planForMonths(months),
+      dateOfBirth,
       discipline,
       errors,
       duplicateOf,

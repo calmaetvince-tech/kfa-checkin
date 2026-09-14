@@ -2,7 +2,7 @@ import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import { requireOwner } from "@/lib/auth";
 import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
-import { renewSubscription } from "./actions";
+import { RenewForm } from "./RenewForm";
 import { ShareButtons } from "./ShareButtons";
 import { DangerActions } from "./DangerActions";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
@@ -37,20 +37,36 @@ export default async function MemberDetailPage({
     );
   }
 
-  const [{ data: checkIns }, { data: payments }] = await Promise.all([
-    supabase
-      .from("check_ins")
-      .select("id, checked_in_at")
-      .eq("member_id", member.id)
-      .order("checked_in_at", { ascending: false })
-      .limit(1000),
-    supabase
-      .from("payments")
-      .select("id, amount, months, paid_at")
-      .eq("member_id", member.id)
-      .order("paid_at", { ascending: false })
-      .limit(24),
-  ]);
+  // Attendance analysis only ever looks back a year (the monthly history shows
+  // 12 months, the streak and weekday charts less), so fetch that window rather
+  // than every row a long-standing member has. The old limit(1000) was worse
+  // than slow: past 1000 visits it silently truncated, and the "Total" tile and
+  // best-streak quietly went wrong. The exact total now comes from a count.
+  const STATS_WINDOW_DAYS = 400;
+  const statsSince = new Date(
+    Date.now() - STATS_WINDOW_DAYS * 86_400_000
+  ).toISOString();
+
+  const [{ data: checkIns }, { data: payments }, { count: totalVisits }] =
+    await Promise.all([
+      supabase
+        .from("check_ins")
+        .select("id, checked_in_at")
+        .eq("member_id", member.id)
+        .gte("checked_in_at", statsSince)
+        .order("checked_in_at", { ascending: false })
+        .limit(2000),
+      supabase
+        .from("payments")
+        .select("id, amount, months, paid_at")
+        .eq("member_id", member.id)
+        .order("paid_at", { ascending: false })
+        .limit(24),
+      supabase
+        .from("check_ins")
+        .select("id", { count: "exact", head: true })
+        .eq("member_id", member.id),
+    ]);
 
   const allTimestamps = (checkIns ?? []).map((c) => c.checked_in_at);
 
@@ -192,47 +208,7 @@ export default async function MemberDetailPage({
             />
           </div>
         )}
-        <form action={renewSubscription} className="flex gap-2 items-end">
-          <input type="hidden" name="id" value={member.id} />
-          <div className="flex-1">
-            <label
-              htmlFor="months"
-              className="text-xs text-neutral-500 block mb-1"
-            >
-              Months
-            </label>
-            <input
-              id="months"
-              name="months"
-              type="number"
-              defaultValue={1}
-              min={1}
-              max={24}
-              className="input"
-            />
-          </div>
-          <div className="flex-1">
-            <label
-              htmlFor="amount"
-              className="text-xs text-neutral-500 block mb-1"
-            >
-              Paid (€)
-            </label>
-            <input
-              id="amount"
-              name="amount"
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              min={0}
-              placeholder="40"
-              className="input"
-            />
-          </div>
-          <button type="submit" className="btn-primary">
-            Renew
-          </button>
-        </form>
+        <RenewForm memberId={member.id} />
       </section>
 
       {/* CONTACT + EMERGENCY --------------------------------------------- */}
@@ -297,7 +273,11 @@ export default async function MemberDetailPage({
       )}
 
       {/* ATTENDANCE STATS ------------------------------------------------- */}
-      <MemberStats checkIns={allTimestamps} />
+      <MemberStats
+        checkIns={allTimestamps}
+        totalAllTime={totalVisits ?? allTimestamps.length}
+        windowDays={STATS_WINDOW_DAYS}
+      />
 
       {/* MONTHLY MEMORY --------------------------------------------------- */}
       <MonthlyHistory counts={monthlyCounts} months={12} />

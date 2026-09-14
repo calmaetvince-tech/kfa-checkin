@@ -117,7 +117,6 @@ export default async function DashboardPage() {
     supabase
       .from("members")
       .select("id, name, phone, date_of_birth, photo_updated_at")
-      .not("date_of_birth", "is", null)
       .returns<BirthdayRow[]>(),
     supabase
       .from("check_ins")
@@ -233,7 +232,23 @@ export default async function DashboardPage() {
   }).formatToParts(new Date());
   const todayMonth = Number(athensParts.find((p) => p.type === "month")?.value);
   const todayDay = Number(athensParts.find((p) => p.type === "day")?.value);
-  const todaysBirthdays = (birthdayRaw ?? []).filter((m) => {
+  const allMemberRows = birthdayRaw ?? [];
+
+  // Birthday reminders and the member's own greeting need a date of birth, and
+  // an imported roster usually arrives without one. Surface the gap instead of
+  // letting the feature quietly never fire.
+  const missingDetails = allMemberRows
+    .filter((m) => !m.date_of_birth || !m.phone)
+    .map((m) => ({
+      ...m,
+      missing: [
+        !m.date_of_birth ? "γενέθλια" : null,
+        !m.phone ? "τηλέφωνο" : null,
+      ].filter(Boolean) as string[],
+    }));
+  const MISSING_CAP = 6;
+
+  const todaysBirthdays = allMemberRows.filter((m) => {
     if (!m.date_of_birth) return false;
     const [, mm, dd] = m.date_of_birth.split("-").map(Number);
     return mm === todayMonth && dd === todayDay;
@@ -410,6 +425,21 @@ export default async function DashboardPage() {
       </section>
 
       {/* REVENUE ------------------------------------------------------------ */}
+      {!hasRevenue && (
+        <section className="card flex flex-col gap-1">
+          <p className="text-xs uppercase tracking-widest text-neutral-500">
+            💶 Έσοδα {monthName}
+          </p>
+          <p className="font-display text-4xl leading-tight text-neutral-700">
+            €0
+          </p>
+          <p className="text-xs text-neutral-500">
+            Τα έσοδα γεμίζουν μόνο όταν γράφεις το ποσό στην ανανέωση, μέσα από
+            τη σελίδα του μέλους. Χωρίς αυτό το ταμπλό μένει στο μηδέν.
+          </p>
+        </section>
+      )}
+
       {hasRevenue && (
         <section className="card flex items-center justify-between gap-3">
           <div>
@@ -700,6 +730,50 @@ export default async function DashboardPage() {
             >
               View all {inactiveMembers.length} →
             </Link>
+          )}
+        </section>
+      )}
+
+      {/* MISSING DETAILS ---------------------------------------------------- */}
+      {missingDetails.length > 0 && (
+        <section className="card flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <h2 className="section-title font-display text-xl tracking-wide">
+              📝 Λείπουν στοιχεία
+            </h2>
+            <span className="text-xs text-neutral-500">
+              {missingDetails.length}
+            </span>
+          </div>
+          <p className="-mt-1 text-xs text-neutral-500">
+            Χωρίς γενέθλια δεν στέλνονται ευχές· χωρίς τηλέφωνο δεν δουλεύει το
+            WhatsApp.
+          </p>
+          <ul className="divide-y divide-neutral-800/80">
+            {missingDetails.slice(0, MISSING_CAP).map((m) => (
+              <li key={m.id} className="flex items-center gap-3 py-2">
+                <Avatar
+                  name={m.name}
+                  memberId={m.id}
+                  photoVersion={m.photo_updated_at}
+                  dim
+                />
+                <Link
+                  href={`/dashboard/member/${m.id}`}
+                  className="min-w-0 flex-1 truncate font-medium hover:text-brand"
+                >
+                  {m.name}
+                </Link>
+                <span className="shrink-0 text-xs text-neutral-500">
+                  {m.missing.join(" · ")}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {missingDetails.length > MISSING_CAP && (
+            <p className="text-xs text-neutral-500">
+              +{missingDetails.length - MISSING_CAP} ακόμη
+            </p>
           )}
         </section>
       )}

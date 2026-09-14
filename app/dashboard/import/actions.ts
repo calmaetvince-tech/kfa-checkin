@@ -86,6 +86,7 @@ export async function importMembers(
         email: r.email,
         plan: r.plan,
         discipline: r.discipline,
+        date_of_birth: r.dateOfBirth,
         subscription_renewed_at: renewedAt,
         subscription_expires_at: expiresAt,
       };

@@ -5,9 +5,9 @@ import Link from "next/link";
 import { parseMembersInput } from "@/lib/import-parse";
 import { importMembers, type ImportOutcome } from "./actions";
 
-const EXAMPLE = `Μαρία Παπαδοπούλου, 6971234567, 1/9/2026, 3
-Γιώργος Νικολάου, 6987654321, 15/9/2026, 1
-Ελένη Δήμου, 6944112233, 1/10/2026, 12`;
+const EXAMPLE = `Μαρία Παπαδοπούλου, 6971234567, 1/9/2026, 3, 14/5/1998
+Γιώργος Νικολάου, 6987654321, 15/9/2026, 1, 2/11/1990
+Ελένη Δήμου, 6944112233, 1/10/2026, 12, 30/7/2005`;
 
 function fmtGreek(iso: string | null): string {
   if (!iso) return "σήμερα";
@@ -97,11 +97,14 @@ export function ImportForm() {
           Μία γραμμή ανά μέλος, χωρισμένα με κόμμα:
           <br />
           <code className="text-neutral-400">
-            Όνομα, Τηλέφωνο, Έναρξη συνδρομής, Μήνες
+            Όνομα, Τηλέφωνο, Έναρξη συνδρομής, Μήνες, Γενέθλια
           </code>
           <br />
           Μόνο το όνομα είναι υποχρεωτικό. Οι ημερομηνίες διαβάζονται ελληνικά
           (<strong>ΗΜΕΡΑ/ΜΗΝΑΣ/ΕΤΟΣ</strong>) — το 3/4/2026 είναι 3 Απριλίου.
+          <br />
+          Βάλε τα γενέθλια τώρα που έχεις τη λίστα: χωρίς αυτά δεν δουλεύει η
+          υπενθύμιση γενεθλίων.
         </p>
         <textarea
           value={text}
@@ -149,6 +152,7 @@ export function ImportForm() {
                   <th className="px-2 py-1 font-medium">Τηλέφωνο</th>
                   <th className="px-2 py-1 font-medium">Έναρξη</th>
                   <th className="px-2 py-1 font-medium">Πλάνο</th>
+                  <th className="px-2 py-1 font-medium">Γενέθλια</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-800/80">
@@ -183,6 +187,9 @@ export function ImportForm() {
                       </td>
                       <td className="px-2 py-2 text-neutral-400">
                         {r.months > 0 ? `${r.plan} · ${r.months}μ` : "Drop-in"}
+                      </td>
+                      <td className="px-2 py-2 tabular-nums text-neutral-400">
+                        {r.dateOfBirth ? fmtGreek(r.dateOfBirth) : "—"}
                       </td>
                     </tr>
                   );
