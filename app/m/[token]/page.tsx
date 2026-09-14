@@ -344,16 +344,26 @@ export default async function MemberSelfPage({
 
       <MonthlyHistory counts={monthlyCounts} months={6} />
 
-      {topFighters.length > 0 && (
-        <section className="card flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <h2 className="section-title font-display text-xl tracking-wide">
-              🏆 {member.language === "en" ? "Top fighters" : "Top fighters του μήνα"}
-            </h2>
-            <span className="text-xs text-neutral-500">
-              {member.language === "en" ? "by visits" : "με επισκέψεις"}
-            </span>
-          </div>
+      {/* Always rendered. Hiding it on an empty month meant the board simply
+          vanished for everyone between the 1st and the first check-in — which
+          is exactly when a member is most likely to go looking for it. */}
+      <section className="card flex flex-col gap-2">
+        <div className="flex items-center justify-between">
+          <h2 className="section-title font-display text-xl tracking-wide">
+            🏆 {member.language === "en" ? "Top fighters" : "Top fighters του μήνα"}
+          </h2>
+          <span className="text-xs text-neutral-500">
+            {member.language === "en" ? "by visits" : "με επισκέψεις"}
+          </span>
+        </div>
+        {topFighters.length === 0 ? (
+          <p className="py-3 text-center text-sm text-neutral-500">
+            {member.language === "en"
+              ? "No sessions logged yet this month. Check in and take the top spot 🥇"
+              : "Κανείς δεν έχει προπονηθεί ακόμα αυτόν τον μήνα. Κάνε check-in και πιάσε την πρώτη θέση 🥇"}
+          </p>
+        ) : (
+          <>
           <ul className="flex flex-col">
             {topFighters.map((f, i) => (
               <li
@@ -422,8 +432,9 @@ export default async function MemberSelfPage({
                 : `#${myStanding.position} από ${board.length} αυτόν τον μήνα`}
             </p>
           )}
-        </section>
-      )}
+          </>
+        )}
+      </section>
 
       <section className="card flex flex-col gap-2 text-sm">
         <h2 className="section-title font-display text-xl tracking-wide">Subscription</h2>
