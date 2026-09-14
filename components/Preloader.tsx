@@ -1,8 +1,14 @@
 // Opening splash for member pages, ported verbatim from the Kallistis website
 // (src/routes/__root.tsx there): pulsing gold logo over a sliding progress bar.
-// Members reach this page from a home-screen icon, so the full page load IS the
-// app launching — showing the same splash the website uses makes the two feel
-// like one product.
+// Members reach their page from a home-screen icon, so the full page load IS
+// the app launching — showing the same splash the website uses makes the two
+// feel like one product.
+//
+// MUST live in the ROOT layout, above app/loading.tsx. The member page is
+// force-dynamic, so it suspends and Next streams app/loading.tsx as the first
+// paint; anything rendered below that boundary — as this was, in app/m/layout
+// — only arrives after the wait it was meant to cover, and the member sees the
+// generic spinner instead. Only the root layout is part of the initial shell.
 //
 // Deliberately plain <style>/<script> rather than a React component: both are
 // server-rendered into the initial HTML and run while the browser is still
@@ -32,6 +38,14 @@ html.kfa-loading,html.kfa-loading body{overflow:hidden!important}
 const PRELOADER_JS = `
 (function(){
   try{
+    // Root layout renders on every route; the splash belongs to member pages
+    // only. This runs immediately after the markup is parsed, so the owner's
+    // dashboard never paints it.
+    if(location.pathname.indexOf('/m/') !== 0){
+      var skip = document.getElementById('kfa-preloader');
+      if(skip) skip.style.display='none';
+      return;
+    }
     document.documentElement.classList.add('kfa-loading');
     var start = performance.now();
     var MIN = 600, MAX = 3500;
@@ -75,11 +89,7 @@ const PRELOADER_JS = `
 })();
 `;
 
-export default function MemberLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export function Preloader() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: PRELOADER_CSS }} />
@@ -107,7 +117,6 @@ export default function MemberLayout({
       <noscript>
         <style dangerouslySetInnerHTML={{ __html: "#kfa-preloader{display:none}" }} />
       </noscript>
-      {children}
     </>
   );
 }

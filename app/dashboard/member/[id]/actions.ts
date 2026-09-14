@@ -78,3 +78,53 @@ export async function rotateQrToken(formData: FormData) {
 
   revalidatePath(`/dashboard/member/${id}`);
 }
+
+/**
+ * Edit a member's details. Every field is optional except the name; blank
+ * inputs are stored as NULL rather than "" so the dashboard's "missing
+ * details" card and the birthday reminders keep working off a real absence.
+ */
+export async function updateMember(formData: FormData) {
+  const { supabase } = await requireOwner();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+
+  const text = (key: string) => {
+    const v = String(formData.get(key) ?? "").trim();
+    return v === "" ? null : v;
+  };
+
+  const name = text("name");
+  if (!name) {
+    redirect(
+      `/dashboard/member/${id}?err=` +
+        encodeURIComponent("Το όνομα δεν μπορεί να είναι κενό")
+    );
+  }
+
+  const language = text("language");
+
+  const { error } = await supabase
+    .from("members")
+    .update({
+      name,
+      phone: text("phone"),
+      email: text("email"),
+      // A date column rejects "", so an emptied field must become NULL.
+      date_of_birth: text("date_of_birth"),
+      plan: text("plan"),
+      discipline: text("discipline"),
+      language: language === "en" || language === "el" ? language : null,
+      emergency_contact_name: text("emergency_contact_name"),
+      emergency_contact_phone: text("emergency_contact_phone"),
+      notes: text("notes"),
+    })
+    .eq("id", id);
+
+  if (error) {
+    redirect(`/dashboard/member/${id}?err=` + encodeURIComponent(error.message));
+  }
+
+  revalidatePath(`/dashboard/member/${id}`);
+  revalidatePath("/dashboard");
+}

@@ -3,6 +3,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { requireOwner } from "@/lib/auth";
 import { statusLabel, fmtDate, fmtDateTime } from "@/lib/format";
 import { RenewForm } from "./RenewForm";
+import { EditMemberForm } from "./EditMemberForm";
 import { ShareButtons } from "./ShareButtons";
 import { DangerActions } from "./DangerActions";
 import { WhatsAppReminderButton } from "@/components/WhatsAppReminderButton";
@@ -16,7 +17,7 @@ export default async function MemberDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { just_created?: string };
+  searchParams: { just_created?: string; err?: string };
 }) {
   const { supabase } = await requireOwner();
 
@@ -116,6 +117,12 @@ export default async function MemberDetailPage({
         </div>
       )}
 
+      {searchParams.err && (
+        <div className="card border-rose-700 bg-rose-950/40 text-sm text-rose-200">
+          {searchParams.err}
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl font-bold truncate">{member.name}</h1>
@@ -126,6 +133,8 @@ export default async function MemberDetailPage({
         </div>
         <span className={`badge-${s.tone}`}>{s.label}</span>
       </div>
+
+      <EditMemberForm member={member} />
 
       {/* QR + SHARE ------------------------------------------------------- */}
       <section className="card flex flex-col gap-3">

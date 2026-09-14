@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, Inter } from "next/font/google";
 import "./globals.css";
+import { Preloader } from "@/components/Preloader";
 
 // Display face for numbers + section titles (fight-poster feel); Inter carries
 // body text incl. Greek. Greek glyphs inside display text fall back to Inter.
@@ -70,6 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`dark ${display.variable} ${inter.variable}`}>
       <body>
+        <Preloader />
         <div className="mx-auto max-w-2xl px-4 py-6 min-h-screen">
           {children}
         </div>
