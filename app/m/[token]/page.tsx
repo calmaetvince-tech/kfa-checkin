@@ -288,53 +288,6 @@ export default async function MemberSelfPage({
 
       <InstallPrompt />
 
-      <ScheduleCard
-        rows={schedule}
-        lang={member.language === "en" ? "en" : "el"}
-      />
-
-      <section className="card flex flex-col gap-3 items-center">
-        <p className="text-xs text-neutral-500">Show this at the front desk</p>
-        <div className="corners bg-white p-4 rounded-xl">
-          <QRCodeSVG value={myUrl} size={220} />
-        </div>
-        <p className="text-xs text-neutral-500 text-center">
-          Add this page to your phone&apos;s home screen
-          <br />
-          <span className="text-neutral-600">
-            (Share → Add to Home Screen)
-          </span>
-        </p>
-      </section>
-
-      {streak.current_streak_days > 0 && (
-        <section className="card flex items-center justify-center gap-3 bg-gradient-to-br from-brand/15 to-transparent border-brand/30">
-          <span className="text-3xl">🔥</span>
-          <div>
-            <p className="font-display text-3xl text-brand leading-none">
-              {streak.current_streak_days} day
-              {streak.current_streak_days === 1 ? "" : "s"}
-            </p>
-            <p className="text-xs text-neutral-400">
-              current streak · best {streak.longest_streak_days}
-            </p>
-          </div>
-        </section>
-      )}
-
-      <section className="grid grid-cols-2 gap-2">
-        <div className="card text-center">
-          <p className="font-display text-4xl text-brand">
-            {member.visits_this_month}
-          </p>
-          <p className="text-xs text-neutral-500">This month</p>
-        </div>
-        <div className="card text-center">
-          <p className="font-display text-4xl">{member.visits_all_time}</p>
-          <p className="text-xs text-neutral-500">All-time</p>
-        </div>
-      </section>
-
       {/* Always rendered. Hiding it on an empty month meant the board simply
           vanished for everyone between the 1st and the first check-in — which
           is exactly when a member is most likely to go looking for it. */}
@@ -425,6 +378,53 @@ export default async function MemberSelfPage({
           )}
           </>
         )}
+      </section>
+
+      <ScheduleCard
+        rows={schedule}
+        lang={member.language === "en" ? "en" : "el"}
+      />
+
+      <section className="card flex flex-col gap-3 items-center">
+        <p className="text-xs text-neutral-500">Show this at the front desk</p>
+        <div className="corners bg-white p-4 rounded-xl">
+          <QRCodeSVG value={myUrl} size={220} />
+        </div>
+        <p className="text-xs text-neutral-500 text-center">
+          Add this page to your phone&apos;s home screen
+          <br />
+          <span className="text-neutral-600">
+            (Share → Add to Home Screen)
+          </span>
+        </p>
+      </section>
+
+      {streak.current_streak_days > 0 && (
+        <section className="card flex items-center justify-center gap-3 bg-gradient-to-br from-brand/15 to-transparent border-brand/30">
+          <span className="text-3xl">🔥</span>
+          <div>
+            <p className="font-display text-3xl text-brand leading-none">
+              {streak.current_streak_days} day
+              {streak.current_streak_days === 1 ? "" : "s"}
+            </p>
+            <p className="text-xs text-neutral-400">
+              current streak · best {streak.longest_streak_days}
+            </p>
+          </div>
+        </section>
+      )}
+
+      <section className="grid grid-cols-2 gap-2">
+        <div className="card text-center">
+          <p className="font-display text-4xl text-brand">
+            {member.visits_this_month}
+          </p>
+          <p className="text-xs text-neutral-500">This month</p>
+        </div>
+        <div className="card text-center">
+          <p className="font-display text-4xl">{member.visits_all_time}</p>
+          <p className="text-xs text-neutral-500">All-time</p>
+        </div>
       </section>
 
       <Heatmap activeDays={activeDays} />
