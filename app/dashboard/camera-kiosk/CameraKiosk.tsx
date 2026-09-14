@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { recordCheckIn, type CheckInResult } from "../scan/actions";
 import { statusLabel, fmtTime } from "@/lib/format";
+import { rankFor } from "@/lib/rank";
 import { preloadScanner, startScanner, type Facing } from "@/lib/qr-scanner";
 import {
   chimeSuccess,
@@ -16,7 +17,7 @@ import {
 // name for a couple of seconds, then loop back to scanning automatically. Keeps
 // the screen awake so the camera never sleeps, and only the camera-flip control
 // is tappable so members can't wander into the dashboard.
-const RESULT_DISPLAY_MS = 2500;
+const RESULT_DISPLAY_MS = 3000;
 
 export function CameraKiosk() {
   const [started, setStarted] = useState(false);
@@ -202,7 +203,15 @@ export function CameraKiosk() {
       )}
 
       {result && (
-        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 bg-brand-ink px-6">
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center overflow-hidden bg-brand-ink px-6">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 h-[130vw] w-[130vw] -translate-x-1/2 -translate-y-1/2 rounded-full"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(212,160,23,0.14) 0%, rgba(212,160,23,0.04) 40%, transparent 70%)",
+            }}
+          />
           <KioskResult result={result} />
         </div>
       )}
@@ -213,33 +222,169 @@ export function CameraKiosk() {
 function KioskResult({ result }: { result: CheckInResult }) {
   if (!result.ok) {
     return (
-      <>
+      <div className="kfa-hit flex flex-col items-center gap-4 text-center">
         <span className="text-7xl">❌</span>
-        <h1 className="font-display text-3xl text-rose-400">{result.error}</h1>
-      </>
+        <h1 className="font-display text-3xl tracking-wide text-rose-400">
+          {result.error}
+        </h1>
+        <p className="text-sm text-neutral-500">
+          Δοκίμασε ξανά ή ρώτησε στη ρεσεψιόν
+        </p>
+      </div>
     );
   }
 
   const s = statusLabel(result.member.subscription_expires_at);
-  const color =
-    s.tone === "ok"
-      ? "text-emerald-400"
-      : s.tone === "warn"
-      ? "text-amber-400"
-      : "text-rose-400";
+  const active = s.tone === "ok";
+  const r = rankFor(result.totalVisits);
+
+  // Gold for a valid membership, amber when it is running out — the colour is
+  // the message across the room, before anyone reads a word.
+  const accent = active ? "#d4a017" : "#f59e0b";
 
   return (
-    <>
-      <span className="text-7xl">{s.tone === "ok" ? "✅" : "⚠️"}</span>
-      <h1 className="font-display text-5xl tracking-wide">
-        {result.member.name}
-      </h1>
-      <p className={`font-display text-2xl tracking-widest ${color}`}>
-        {s.label}
+    <div className="relative flex w-full max-w-sm flex-col items-center gap-5 text-center">
+      {/* Ring pulse from behind the portrait, once, on arrival. */}
+      <span
+        aria-hidden
+        className="kfa-ring pointer-events-none absolute left-1/2 top-16 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full border-2"
+        style={{ borderColor: accent }}
+      />
+
+      <div className="kfa-hit relative">
+        <KioskPortrait
+          memberId={result.member.id}
+          name={result.member.name}
+          photoVersion={result.member.photo_updated_at}
+          accent={accent}
+        />
+        <span
+          className="absolute -bottom-1 -right-1 grid h-11 w-11 place-items-center rounded-full border-2 text-xl"
+          style={{ borderColor: accent, background: "#0a0a0a" }}
+          title={r.rank.el}
+        >
+          {active ? r.rank.icon : "⚠️"}
+        </span>
+      </div>
+
+      <div className="kfa-rise flex flex-col items-center gap-1">
+        <p
+          className="font-display text-xs tracking-[0.34em]"
+          style={{ color: accent }}
+        >
+          {active ? "ΚΑΛΩΣ ΗΡΘΕΣ" : "ΠΡΟΣΟΧΗ"}
+        </p>
+        <h1 className="font-display text-5xl leading-none tracking-wide">
+          {result.member.name}
+        </h1>
+        <p
+          className="font-display text-lg tracking-[0.2em]"
+          style={{ color: accent }}
+        >
+          {r.rank.el}
+        </p>
+      </div>
+
+      {/* Gold hairline that sweeps across once, like a scanner pass. */}
+      <div className="relative h-px w-40 overflow-hidden bg-neutral-800">
+        <span
+          aria-hidden
+          className="kfa-sweep absolute inset-0"
+          style={{
+            background: `linear-gradient(90deg, transparent, ${accent}, transparent)`,
+          }}
+        />
+      </div>
+
+      <div className="kfa-rise flex items-stretch gap-3">
+        <Metric value={result.visitsThisMonth} label="ΤΟΝ ΜΗΝΑ" accent={accent} />
+        <Metric value={result.totalVisits} label="ΣΥΝΟΛΟ" />
+        {r.next && (
+          <Metric value={r.remaining} label={`ΓΙΑ ${r.next.icon}`} />
+        )}
+      </div>
+
+      <p className="text-xs text-neutral-500">
+        {fmtTime(result.lastVisitAt)}
+        {!active && ` · ${s.label}`}
       </p>
-      <p className="text-sm text-neutral-500">
-        {result.visitsThisMonth} επισκέψεις τον μήνα · {fmtTime(result.lastVisitAt)}
+    </div>
+  );
+}
+
+/**
+ * Portrait for the check-in reaction. Most members have no photo yet and the
+ * avatar endpoint answers 404 for them, so a bare <img> would put a broken
+ * image on a screen the whole gym walks past. Only request the photo when the
+ * database says one exists, and still fall back to monogram initials if that
+ * request fails.
+ */
+function KioskPortrait({
+  memberId,
+  name,
+  photoVersion,
+  accent,
+}: {
+  memberId: string;
+  name: string;
+  photoVersion: string | null;
+  accent: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+
+  const showPhoto = Boolean(photoVersion) && !failed;
+
+  return (
+    <div
+      className="grid h-32 w-32 place-items-center overflow-hidden rounded-full border-[3px] bg-neutral-900"
+      style={{ borderColor: accent, boxShadow: `0 0 46px ${accent}55` }}
+    >
+      {showPhoto ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={`/api/avatar/${memberId}?v=${encodeURIComponent(photoVersion!)}`}
+          alt=""
+          className="h-full w-full object-cover"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <span
+          className="font-display text-5xl leading-none"
+          style={{ color: accent }}
+        >
+          {initials || "?"}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function Metric({
+  value,
+  label,
+  accent,
+}: {
+  value: number;
+  label: string;
+  accent?: string;
+}) {
+  return (
+    <div className="min-w-[72px] rounded-xl border border-neutral-800 bg-neutral-950/60 px-3 py-2">
+      <p
+        className="font-display text-3xl leading-none tabular-nums"
+        style={accent ? { color: accent } : undefined}
+      >
+        {value}
       </p>
-    </>
+      <p className="mt-0.5 text-[9px] tracking-[0.14em] text-neutral-500">
+        {label}
+      </p>
+    </div>
   );
 }

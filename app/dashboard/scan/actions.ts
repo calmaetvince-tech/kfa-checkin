@@ -9,8 +9,11 @@ export type CheckInResult =
         id: string;
         name: string;
         subscription_expires_at: string | null;
+        photo_updated_at: string | null;
       };
       visitsThisMonth: number;
+      /** Lifetime check-ins, including the one just recorded — drives rank. */
+      totalVisits: number;
       lastVisitAt: string;
     }
   | { ok: false; error: string };
@@ -33,7 +36,7 @@ export async function recordCheckIn(qrPayload: string): Promise<CheckInResult> {
 
   const { data: member, error: mErr } = await supabase
     .from("members")
-    .select("id, name, subscription_expires_at")
+    .select("id, name, subscription_expires_at, photo_updated_at")
     .eq("qr_token", token)
     .maybeSingle();
 
@@ -54,16 +57,23 @@ export async function recordCheckIn(qrPayload: string): Promise<CheckInResult> {
     1
   ).toISOString();
 
-  const { count } = await supabase
-    .from("check_ins")
-    .select("id", { count: "exact", head: true })
-    .eq("member_id", member.id)
-    .gte("checked_in_at", startOfMonth);
+  const [{ count }, { count: total }] = await Promise.all([
+    supabase
+      .from("check_ins")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", member.id)
+      .gte("checked_in_at", startOfMonth),
+    supabase
+      .from("check_ins")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", member.id),
+  ]);
 
   return {
     ok: true,
     member,
     visitsThisMonth: count ?? 0,
+    totalVisits: total ?? 0,
     lastVisitAt: ci.checked_in_at,
   };
 }

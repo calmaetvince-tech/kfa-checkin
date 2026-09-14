@@ -48,6 +48,12 @@ const PRELOADER_JS = `
     //   2. the root manifest (start_url "/"), where the landing page then
     //      client-redirects to the saved member token. Without case 2 an
     //      installed icon could still flash the landing page with no splash.
+    // A ?celebrate= link exists to show a scan video the moment the page
+    // opens. The splash outranks every overlay in the app (z-9999), so it
+    // would play the video underneath and look like the videos had been
+    // removed. The celebration is its own intro; stand aside for it.
+    if(location.search.indexOf('celebrate=') !== -1){ bail(); return; }
+
     var path = location.pathname;
     var direct = path.indexOf('/m/') === 0;
     var viaRoot = false;
