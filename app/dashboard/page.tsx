@@ -717,6 +717,10 @@ export default async function DashboardPage() {
           No members yet.{" "}
           <Link href="/dashboard/add" className="text-brand underline">
             Add the first one
+          </Link>{" "}
+          or{" "}
+          <Link href="/dashboard/import" className="text-brand underline">
+            import the whole roster
           </Link>
           .
         </div>

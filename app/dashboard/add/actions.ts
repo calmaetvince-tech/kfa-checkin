@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { requireOwner } from "@/lib/auth";
+import { subscriptionWindow } from "@/lib/import-parse";
 
 export async function addMember(formData: FormData) {
   const { supabase } = await requireOwner();
@@ -28,16 +29,9 @@ export async function addMember(formData: FormData) {
     redirect("/dashboard/add?err=" + encodeURIComponent("Name is required"));
   }
 
-  const now = new Date();
-  const renewedAt = months > 0 ? now.toISOString() : null;
-  const expiresAt =
-    months > 0
-      ? new Date(
-          now.getFullYear(),
-          now.getMonth() + months,
-          now.getDate()
-        ).toISOString()
-      : null;
+  // Shared with the bulk import so both paths clamp to the end of the target
+  // month: adding a month to 31 January must land on 28 February, not 3 March.
+  const { renewedAt, expiresAt } = subscriptionWindow(null, months);
 
   const { data, error } = await supabase
     .from("members")
