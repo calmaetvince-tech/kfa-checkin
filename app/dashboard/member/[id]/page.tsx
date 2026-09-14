@@ -47,8 +47,12 @@ export default async function MemberDetailPage({
     Date.now() - STATS_WINDOW_DAYS * 86_400_000
   ).toISOString();
 
-  const [{ data: checkIns }, { data: payments }, { count: totalVisits }] =
-    await Promise.all([
+  const [
+    { data: checkIns },
+    { data: payments },
+    { count: totalVisits },
+    { data: recentVisits },
+  ] = await Promise.all([
       supabase
         .from("check_ins")
         .select("id, checked_in_at")
@@ -66,6 +70,15 @@ export default async function MemberDetailPage({
         .from("check_ins")
         .select("id", { count: "exact", head: true })
         .eq("member_id", member.id),
+      // Deliberately NOT restricted to the stats window: the visit list must
+      // still show the last sessions of someone who stopped coming over a year
+      // ago, instead of claiming they never trained here.
+      supabase
+        .from("check_ins")
+        .select("id, checked_in_at")
+        .eq("member_id", member.id)
+        .order("checked_in_at", { ascending: false })
+        .limit(15),
     ]);
 
   const allTimestamps = (checkIns ?? []).map((c) => c.checked_in_at);
@@ -286,12 +299,12 @@ export default async function MemberDetailPage({
       <section className="card flex flex-col gap-2">
         <h2 className="font-semibold">Recent visits</h2>
         <ul className="text-sm divide-y divide-neutral-800">
-          {(checkIns ?? []).slice(0, 15).map((c) => (
+          {(recentVisits ?? []).map((c) => (
             <li key={c.id} className="py-1.5">
               {fmtDateTime(c.checked_in_at)}
             </li>
           ))}
-          {(checkIns ?? []).length === 0 && (
+          {(recentVisits ?? []).length === 0 && (
             <li className="py-2 text-neutral-500">No visits yet.</li>
           )}
         </ul>
